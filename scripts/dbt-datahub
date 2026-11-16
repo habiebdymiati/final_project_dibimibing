@@ -1,0 +1,5 @@
+#!/bin/sh
+# Bangun layer gold di Data Hub. Jalankan `python -m ingestion.fdw_silver` lebih dulu.
+#   dbt-datahub build | run | test | ...
+cmd="$1"; shift
+exec /home/airflow/dbt-venv/bin/dbt "$cmd" --target datahub "$@"

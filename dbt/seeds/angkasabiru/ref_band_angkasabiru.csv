@@ -1,0 +1,5 @@
+source_system,id_band,band_code,band_name,band_sequence,band_category,job_class_min,job_class_max
+angkasabiru,AB-BAND-AB-BOD-1,BOD-1,Band 1,1,Executive,18,23
+angkasabiru,AB-BAND-AB-BOD-2,BOD-2,Band 2,2,Senior Managerial,16,17
+angkasabiru,AB-BAND-AB-BOD-3,BOD-3,Band 3,3,Managerial,14,15
+angkasabiru,AB-BAND-AB-BOD-4,BOD-4,Band 4,4,Operational,7,13

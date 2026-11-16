@@ -1,0 +1,53 @@
+# =============================================================================
+# Yang masuk git hanya yang langsung terlibat dalam proses:
+#   Ingestion                 : sources/ ingestion/ mock_api/ (instance API tiruan, sumber data pipeline)
+#   Transformasi dan modeling : dbt/ scripts/dbt scripts/dbt-dwh scripts/dbt-datahub
+#   Menjalankan proses        : airflow/dags/ db/ Dockerfile docker-compose.yml Makefile
+#                               requirements*.txt .env.example
+#   Menguji proses            : tests/ pytest.ini
+#   Penjelasan proses         : README.md docs/ (diagram proses + gambarnya)
+# Selebihnya (kredensial, data, dokumen, visualisasi, alat bantu, hasil runtime) hanya lokal.
+# =============================================================================
+
+# --- Kredensial: jangan pernah di-commit
+.env
+!.env.example
+
+# --- Data pegawai (PII): sample endpoint, master data pegawai, dan berkas referensi
+data/
+
+# --- Dokumen: BRD, deliverable proyek, arsip, dan katalog data
+brd/
+deliverable/
+arsip/
+data_catalogue/
+
+# --- Visualisasi Metabase: di luar ingestion, transformasi, dan modeling
+bi/
+tests/test_metabase.py
+
+# --- Alat bantu dokumen dan data contoh: tidak dipakai saat pipeline berjalan
+scripts/catalogue/
+scripts/render_mermaid.py
+scripts/scrape_notion.py
+scripts/refresh_sample.py
+
+# --- Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# --- dbt (hasil runtime)
+dbt/target/
+dbt/logs/
+dbt/dbt_packages/
+dbt/.user.yml
+
+# --- Airflow (hasil runtime)
+airflow/logs/
+
+# --- IDE / OS / asisten
+.vscode/
+.idea/
+.claude/
+.DS_Store

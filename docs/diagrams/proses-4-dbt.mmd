@@ -1,0 +1,55 @@
+flowchart TB
+    subgraph MASUK["BAHAN BAKU DI DWH"]
+        RT["<b>raw_table_#lt;sumber#gt;.*</b><br/>semua endpoint, kolom teks"]:::raw
+        TMT["<b>reference: tmt_karyawan</b><br/>Angkasa Biru, urutan id_employee"]:::pendukung
+        NOM["<b>reference: nominatif</b><br/>Angkasa Biru, cadangan saat API kosong"]:::pendukung
+        MD["<b>reference: master_data</b><br/>kedua perusahaan, kolom Top Talent"]:::pendukung
+        SEED["<b>seed_#lt;sumber#gt;</b><br/>ref_band, ref_company,<br/>ref_performance_rating, map_nilai"]:::pendukung
+    end
+
+    subgraph TARGETDWH["dbt build --target dwh (task transform_silver)"]
+        NIP["<b>int_nip_pegawai</b><br/>semua NIP dan TMT-nya"]:::silver
+        REG["<b>registry_id_employee</b><br/>incremental: hanya menambah NIP baru"]:::pendukung
+        INOM["<b>int_nominatif</b> (Angkasa Biru)<br/>kode dipetakan ke nama, posisi dicocokkan"]:::silver
+        POS["<b>int_posisi_terkini</b> (Angkasa Biru)<br/>posisi terakhir dan asal nilainya:<br/>sumber_area, sumber_directorate, sumber_org_group"]:::silver
+        STG["<b>stg_#lt;entitas#gt;_#lt;sumber#gt;</b> (20 view)<br/>ap(), snh(): kolom tidak ada di raw menjadi NULL, bukan error<br/>ke_tanggal(), baku(): format dan nilai baku"]:::silver
+        SIL["<b>#lt;entitas#gt;_#lt;sumber#gt;</b> (20 tabel di silver_#lt;sumber#gt;)<br/>Tes unique, not_null gagal: run berhenti<br/>Tes relationships, accepted_values gagal: hanya WARN"]:::silver
+    end
+
+    FDW["<b>python -m ingestion.fdw_silver</b><br/>fdw_silver_#lt;sumber#gt;: foreign table cermin silver, dibuat ulang tiap run"]:::kerja
+
+    subgraph TARGETHUB["dbt build --target datahub (task build_gold)"]
+        IP["<b>int_posisi_pegawai</b><br/>posisi dan job family per pegawai"]:::silver
+        IM["<b>int_employee_metrics</b><br/>metrik per pegawai untuk kedua fact"]:::silver
+        DIM["<b>dim_*</b><br/>company, band, org_unit, position_master,<br/>position_variant, employee, contract_type, date"]:::gold
+        F1["<b>fact_employee_snapshot</b><br/>per pegawai aktif per tanggal:<br/>masa kerja, kinerja, kontrak, disiplin, top talent"]:::gold
+    end
+
+    RT --> NIP
+    TMT --> NIP
+    NIP --> REG
+    RT --> INOM
+    NOM --> INOM
+    INOM --> POS
+    RT --> POS
+    RT --> STG
+    TMT --> STG
+    MD --> STG
+    SEED --> STG
+    REG --> STG
+    POS --> STG
+    STG --> SIL
+    SIL --> FDW
+    FDW --> IP
+    FDW --> DIM
+    FDW --> IM
+    IP --> IM
+    IP --> DIM
+    DIM --> IM
+    IM --> F1
+
+    classDef raw fill:#f8e6d6,stroke:#b5763a,color:#3d2610;
+    classDef pendukung fill:#f1f0ec,stroke:#8a8984,color:#26251f;
+    classDef silver fill:#e6ebf1,stroke:#66788c,color:#1f2a36;
+    classDef gold fill:#fdf0bf,stroke:#b8920f,color:#3b2f06;
+    classDef kerja fill:#ffffff,stroke:#8a8984,color:#26251f;

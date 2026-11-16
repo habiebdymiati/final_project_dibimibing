@@ -1,0 +1,38 @@
+version: 2
+sources:
+  - name: raw_ab
+    description: "Angkasa Biru (SAPATH): payload API yang sudah didatarkan (kunci -> kolom teks), diisi truncate-insert tiap run."
+    schema: raw_table_angkasabiru
+    tables:
+      - name: units
+      - name: directorates
+      - name: branches
+      - name: groups
+      - name: positions
+      - name: position_master
+      - name: position_variants
+      - name: position_competency_requirements
+      - name: job_families
+      - name: job_functions
+      - name: employee_profile
+      - name: employee_identification
+      - name: employee_address
+      - name: employee_family_member
+      - name: employee_position_history
+      - name: employee_assignment_history
+      - name: employee_performance
+      - name: employee_leave_history
+      - name: employee_education_history
+      - name: employee_learning
+      - name: competency_assessment
+      - name: learning_agility
+  - name: ref_ab
+    description: "Berkas referensi Angkasa Biru (bukan endpoint API), dimuat ingestion/load_reference.py; kolom teks apa adanya."
+    schema: reference_angkasabiru
+    tables:
+      - name: tmt_karyawan_angkasabiru
+        description: "TMT tiap pegawai per new_nip; dasar urutan pembentukan id_employee."
+      - name: master_data_angkasabiru
+        description: "Master data: kolom NIK dan Top Talent, baris Angkasa Biru saja; sumber penanda top talent."
+      - name: nominatif_angkasabiru
+        description: "Nominatif pegawai per 8 September 2026 (history); hanya mengisi yang kosong dari API, lihat int_nominatif_angkasabiru."

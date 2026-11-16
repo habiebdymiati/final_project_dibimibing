@@ -1,0 +1,20 @@
+version: 2
+seeds:
+  - name: ref_band_angkasabiruretail
+    description: >
+      Tangga band Angkasa Biru Retail: band diturunkan dari rentang job_class (bukan disalin dari endpoint bands), selaras dengan
+      Angkasa Biru (keputusan 09 November 2026): 17 ke atas Band 1 (BOD-1), 14-16 Band 2 (BOD-2), 12-13 Band 3 (BOD-3),
+      7-11 Band 4 (BOD-4). Batas atas teknis Band 1 ditulis 23 (plafon yang sama dengan tangga Angkasa Biru; job_class
+      tertinggi di data Angkasa Biru Retail 20). job_class di bawah 7 dan kelas berhuruf seperti 4B tidak memperoleh band.
+    config:
+      column_types: {band_sequence: integer, job_class_min: integer, job_class_max: integer}
+  - name: ref_company_angkasabiruretail
+    description: >
+      Nilai perusahaan Angkasa Biru Retail yang dibentuk DWH: id_company dan company_type. company_name dan dt_establishment
+      tetap diambil dari endpoint companies.
+  - name: map_nilai_angkasabiruretail
+    description: >
+      Aturan harmonisasi: nilai sumber (huruf kecil) -> nilai baku lintas perusahaan, dipakai makro baku().
+      Nilai yang belum terdaftar diteruskan apa adanya dan tertangkap uji accepted_values sebagai peringatan.
+    config:
+      column_types: {kolom: text, nilai_sumber: text, nilai_baku: text}

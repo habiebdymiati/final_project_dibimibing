@@ -1,0 +1,68 @@
+flowchart TB
+    MULAI(["<b>Pemicu</b>: jadwal harian 07.00 WIB (00.00 UTC) atau tombol Trigger DAG. Satu DAG per sumber: pipeline_angkasabiru dan pipeline_angkasabiruretail"]):::pemicu
+
+    subgraph T1["TAHAP 1: check_connections"]
+        direction LR
+        A1["<div style='width:360px;white-space:normal'><b>Yang dilakukan</b><br/>Memastikan MinIO, Postgres DWH, dan Postgres Data Hub terjangkau. Membuat bucket arsip bila belum ada.<br/><i>airflow/dags/source_pipelines.py, ingestion/storage.py</i></div>"]:::kerja
+        H1["<div style='width:220px;white-space:normal'><b>Hasil</b><br/>Tidak mengubah data.<br/>Normal: kurang dari 1 menit.</div>"]:::hasil
+        C1["<div style='width:370px;white-space:normal'><b>Bila gagal, cek</b><br/>make ps: ada layanan yang mati?<br/>MINIO_*, DWH_*, DATAHUB_* di .env<br/>docker compose logs --tail=100 minio</div>"]:::cek
+        A1 --> H1 -.-> C1
+    end
+
+    subgraph T2["TAHAP 2: extract_api"]
+        direction LR
+        A2["<div style='width:360px;white-space:normal'><b>Yang dilakukan</b><br/>Menarik tiap endpoint API dan menyimpannya apa adanya sebagai satu file JSON per endpoint di MinIO; dicatat 'extracted' di _ingestion_log. Belum menyentuh tabel raw.<br/><i>ingestion/run_ingest.py, connectors.py, storage.py, sources/&lt;sumber&gt;.yaml</i></div>"]:::kerja
+        H2["<div style='width:220px;white-space:normal'><b>Hasil</b><br/>Arsip batch di MinIO.<br/>Normal: Angkasa Biru ±35 menit, Angkasa Biru Retail ±3 menit.</div>"]:::hasil
+        C2["<div style='width:370px;white-space:normal'><b>Bila gagal, cek</b><br/>Kolom error di _ingestion_log: endpoint mana yang gagal?<br/>HTTP 522, 5xx, timeout: server API, biasanya sementara.<br/>HTTP 401, 403: kredensial API di .env.</div>"]:::cek
+        A2 --> H2 -.-> C2
+    end
+
+    subgraph T2B["TAHAP 3: load_raw"]
+        direction LR
+        A2B["<div style='width:360px;white-space:normal'><b>Yang dilakukan</b><br/>Membaca kembali file batch run ini dari MinIO lalu memuatnya ke raw_&lt;sumber&gt; (JSONB); status di _ingestion_log menjadi 'success'. Tidak menyentuh API: isi Postgres selalu persis isi arsip.<br/><i>ingestion/run_ingest.py, storage.py</i></div>"]:::kerja
+        H2B["<div style='width:220px;white-space:normal'><b>Hasil</b><br/>raw_&lt;sumber&gt;.<br/>Normal: Angkasa Biru ±3 menit, Angkasa Biru Retail kurang dari 1 menit.</div>"]:::hasil
+        C2B["<div style='width:370px;white-space:normal'><b>Bila gagal, cek</b><br/>Status 'load_failed' dan kolom error di _ingestion_log.<br/>Arsipnya masih ada? (konsol MinIO, jalur di archive_path)<br/>MinIO atau Postgres DWH mati? make ps.</div>"]:::cek
+        A2B --> H2B -.-> C2B
+    end
+
+    subgraph T3["TAHAP 4: flatten_raw_tables"]
+        direction LR
+        A3["<div style='width:360px;white-space:normal'><b>Yang dilakukan</b><br/>Mengubah JSONB batch sukses terakhir tiap endpoint menjadi tabel kolom-baris, dengan truncate + insert.<br/><i>ingestion/flatten.py</i></div>"]:::kerja
+        H3["<div style='width:220px;white-space:normal'><b>Hasil</b><br/>raw_table_&lt;sumber&gt;.<br/>Normal: kurang dari 1 menit.</div>"]:::hasil
+        C3["<div style='width:370px;white-space:normal'><b>Bila gagal atau data aneh, cek</b><br/>Log: kunci tidak lagi dikirim sumber (kolom jadi NULL).<br/>Jumlah baris dan _extracted_at di raw_table_&lt;sumber&gt;.<br/>row_count di _ingestion_log: API mengirim 0 baris?</div>"]:::cek
+        A3 --> H3 -.-> C3
+    end
+
+    subgraph T4["TAHAP 5: transform_silver"]
+        direction LR
+        A4["<div style='width:360px;white-space:normal'><b>Yang dilakukan</b><br/>Memuat CSV ke reference_&lt;sumber&gt;, lalu dbt build --target dwh: seed, registry, staging, silver, dan tes.<br/><i>ingestion/load_reference.py, dbt/models/{staging,registry,silver}, dbt/seeds, dbt/macros</i></div>"]:::kerja
+        H4["<div style='width:220px;white-space:normal'><b>Hasil</b><br/>silver_&lt;sumber&gt;.<br/>Normal: sekitar 1 menit. WARN biasa: Angkasa Biru 2, Angkasa Biru Retail 2.</div>"]:::hasil
+        C4["<div style='width:370px;white-space:normal'><b>Bila gagal, cek</b><br/>FileNotFoundError: berkas CSV di data/ tidak ada.<br/>Baris ERROR atau FAIL di log dbt; yang SKIP hanya korban.<br/>Tes unique, not_null gagal: data kembar atau kosong dari API.</div>"]:::cek
+        A4 --> H4 -.-> C4
+    end
+
+    subgraph T5["TAHAP 6: build_gold"]
+        direction LR
+        A5["<div style='width:360px;white-space:normal'><b>Yang dilakukan</b><br/>Menunggu giliran (flock, maks. 30 menit), membuat ulang foreign table, lalu dbt build --target datahub.<br/><i>ingestion/fdw_silver.py, dbt/models/gold, dbt/seeds/gold</i></div>"]:::kerja
+        H5["<div style='width:220px;white-space:normal'><b>Hasil</b><br/>gold.dim_* dan gold.fact_*, dibaca dashboard.<br/>Normal: kurang dari 1 menit.</div>"]:::hasil
+        C5["<div style='width:370px;white-space:normal'><b>Bila gagal, cek</b><br/>silver_&lt;sumber&gt; kosong, atau koneksi Data Hub ke DWH.<br/>Tes relasi fact ke dim di log dbt.<br/>Pipeline lain terlalu lama di build_gold.</div>"]:::cek
+        A5 --> H5 -.-> C5
+    end
+
+    SELESAI(["<b>Selesai</b>: data baru terbaca di dashboard"]):::pemicu
+    GAGAL["<div style='width:1000px;white-space:normal'><b>Bila satu tahap gagal</b>: Airflow mengulang otomatis maksimal 3 kali dengan jeda 5 menit. Bila tetap gagal, task menjadi merah (failed), tahap sesudahnya berhenti (upstream_failed), dan lapisan sesudahnya tetap berisi data lama, tidak kosong.</div>"]:::gagal
+
+    MULAI --> T1
+    T1 -->|sukses| T2
+    T2 -->|sukses| T2B
+    T2B -->|sukses| T3
+    T3 -->|sukses| T4
+    T4 -->|sukses| T5
+    T5 -->|sukses| SELESAI
+    SELESAI ~~~ GAGAL
+
+    classDef pemicu fill:#dcebfb,stroke:#3b78b8,color:#14283d;
+    classDef kerja fill:#ffffff,stroke:#8a8984,color:#26251f;
+    classDef hasil fill:#e8f3e6,stroke:#5c9a55,color:#1e3a1b;
+    classDef cek fill:#fdf0bf,stroke:#b8920f,color:#3b2f06;
+    classDef gagal fill:#fbe3e1,stroke:#b3261e,color:#47100c;

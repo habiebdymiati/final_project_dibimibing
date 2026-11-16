@@ -1,0 +1,71 @@
+# =============================================================================
+# Definisi sumber: PT Angkasa Biru Destinasi (API NATA RINJANI 2.0, read-only)
+# Berbasis koleksi Postman "NATA RINJANI 2.0 - Read-Only API": autentikasi bearer token statis,
+# paginasi ?page=&per_page= (maksimum 500), path berkelompok /organization /employee /transaction.
+# ATURAN: daftar endpoint mengikuti API apa adanya dan lengkap sesuai jumlahnya. Endpoint yang
+# (masih) kosong TETAP didaftarkan. Dua endpoint terakhir tidak ada di koleksi Postman dan
+# dilengkapi instance tiruan (mock) sesuai katalog BRD 4.4-4.5.
+# =============================================================================
+source: abdestination
+type: rest_api
+schedule: "@daily"
+
+mode: "${ABDESTINATION_SOURCE_MODE:-live}"
+sample_dir: data/sample/abdestination
+
+api:
+  base_url: "${ABDESTINATION_API_BASE_URL:-http://mock-abdestination:8000/api/v1}"
+  timeout_seconds: 60
+  retries: 3
+  retry_backoff_seconds: 5
+  auth:
+    type: bearer_token
+    token: "${ABDESTINATION_API_TOKEN:-}"
+  pagination:
+    page_param: page
+    limit_param: per_page
+    limit: 500
+    max_pages: 1000
+
+raw:
+  schema: raw_abdestination
+  minio_bucket: "${ABDESTINATION_MINIO_BUCKET:-abdestination-raw}"
+  keep_batches: 7
+
+dbt:
+  select: "+tag:abdestination+"
+
+reference_files:
+  - {name: "master_data_abdestination", path: "data/refrence/master_data - emp.csv", saring: {"Kode Perusahaan": "ABD"}, kolom: ["NIK", "Top Talent"]}
+
+endpoints:
+  - {name: "company_types", path: "/organization/company-types"}
+  - {name: "companies", path: "/organization/companies"}
+  - {name: "company_addresses", path: "/organization/company-addresses"}
+  - {name: "company_documents", path: "/organization/company-documents"}
+  - {name: "org_unit_types", path: "/organization/org-unit-types"}
+  - {name: "org_units", path: "/organization/org-units"}
+  - {name: "org_unit_documents", path: "/organization/org-unit-documents"}
+  - {name: "job_families", path: "/organization/job-families"}
+  - {name: "job_functions", path: "/organization/job-functions"}
+  - {name: "position_types", path: "/organization/position-types"}
+  - {name: "position_masters", path: "/organization/position-masters"}
+  - {name: "position_variants", path: "/organization/position-variants"}
+  - {name: "bands", path: "/organization/bands"}
+  - {name: "position_documents", path: "/organization/position-documents"}
+  - {name: "position_competency_requirements", path: "/organization/position-competency-requirements"}
+  - {name: "employee_position_histories", path: "/organization/employee-position-histories"}
+  - {name: "employee_secondary_assignments", path: "/organization/employee-secondary-assignments"}
+  - {name: "employee_profiles", path: "/employee/profiles"}
+  - {name: "employee_identifications", path: "/employee/identifications"}
+  - {name: "employee_addresses", path: "/employee/addresses"}
+  - {name: "employee_performance_histories", path: "/employee/performance-histories"}
+  - {name: "employee_leave_histories", path: "/employee/leave-histories"}
+  - {name: "employee_education_histories", path: "/employee/education-histories"}
+  - {name: "employee_assignment_histories", path: "/employee/assignment-histories"}
+  - {name: "employee_family_members", path: "/employee/family-members"}
+  - {name: "employee_contracts", path: "/transaction/contracts"}
+  - {name: "performance_histories", path: "/transaction/performance-histories"}   # duplikat bagian Transaction (katalog 4.2)
+  - {name: "learning_histories", path: "/transaction/learning-histories"}
+  # Endpoint yang tidak ada di koleksi Postman; dilengkapi instance tiruan (mock, katalog BRD 4.5)
+  - {name: "competency_assessments", path: "/transaction/competency-assessments"}

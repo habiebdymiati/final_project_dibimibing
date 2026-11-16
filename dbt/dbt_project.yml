@@ -1,0 +1,96 @@
+# Transformasi raw_table_<sumber> -> silver -> gold, disusun ulang setelah reset 2026-11-06.
+# Acuan struktur : data_catalogue/resume/data-catalogue-rinjani-2.0-efisien-mapping-api.html
+# Acuan pemetaan : data/refrence/mapping api to <sumber>.csv (satu berkas per sumber)
+#
+# Target `dwh` (Postgres DWH): setiap schema DAN tabel/view berakhiran nama pemilik datanya (_<sumber>):
+#   raw_table_<sumber>.*  ->  staging_<sumber>.stg_<entitas>_<sumber>          (view, aturan pemetaan)
+#   reference_<sumber>.*  ->  registry_<sumber>.registry_id_employee_<sumber>  (kunci pegawai buatan DWH, stabil)
+#   dbt/seeds/<sumber>/   ->  seed_<sumber>.ref_<nama>_<sumber>                (rujukan buatan DWH)
+#                         ->  silver_<sumber>.<entitas>_<sumber>               (tabel akhir per entitas katalog)
+#
+# Target `datahub` (Postgres Data Hub): layer gold, star schema gabungan semua perusahaan:
+#   fdw_silver_<sumber>.* ->  staging_gold.int_*  ->  gold.dim_* / gold.fact_*
+#   Jalankan ingestion/fdw_silver.py lebih dulu. Tiap target hanya membangun modelnya sendiri (lihat +enabled).
+name: angkasabiru_harmonization
+version: "2.2.0"
+config-version: 2
+profile: angkasabiruretail
+
+model-paths: ["models"]
+macro-paths: ["macros"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+on-run-start:
+  - "{{ buat_fungsi_bantu() }}"
+
+vars:
+  # sumber yang masuk gold: nama sumber -> kode pada kunci gold dan dim_company.company_code
+  gold_sources: {angkasabiru: AB, angkasabiruretail: ABR, abdestination: ABD}
+  as_of_date: null                    # null = tanggal hari ini
+  performance_window_years: 3         # "3 tahun terakhir" (katalog 7.1)
+  disciplinary_active_months: 12      # dipakai hanya bila is_aktif dari sumber kosong
+
+models:
+  angkasabiru_harmonization:
+    staging:
+      +enabled: "{{ target.name == 'dwh' }}"
+      +materialized: view
+      angkasabiru:
+        +schema: staging_angkasabiru
+        +tags: ["angkasabiru"]
+      angkasabiruretail:
+        +schema: staging_angkasabiruretail
+        +tags: ["angkasabiruretail"]
+      abdestination:
+        +schema: staging_abdestination
+        +tags: ["abdestination"]
+    registry:
+      +enabled: "{{ target.name == 'dwh' }}"
+      angkasabiru:
+        +schema: registry_angkasabiru
+        +tags: ["angkasabiru"]
+      angkasabiruretail:
+        +schema: registry_angkasabiruretail
+        +tags: ["angkasabiruretail"]
+      abdestination:
+        +schema: registry_abdestination
+        +tags: ["abdestination"]
+    silver:
+      +enabled: "{{ target.name == 'dwh' }}"
+      +materialized: table
+      +tags: ["silver"]
+      angkasabiru:
+        +schema: silver_angkasabiru
+        +tags: ["angkasabiru"]
+      angkasabiruretail:
+        +schema: silver_angkasabiruretail
+        +tags: ["angkasabiruretail"]
+      abdestination:
+        +schema: silver_abdestination
+        +tags: ["abdestination"]
+    gold:
+      +enabled: "{{ target.name == 'datahub' }}"
+      +materialized: table
+      +schema: gold
+      +tags: ["gold"]
+      antara:
+        +schema: staging_gold
+
+seeds:
+  angkasabiru_harmonization:
+    +tags: ["seed"]
+    angkasabiru:
+      +enabled: "{{ target.name == 'dwh' }}"
+      +schema: seed_angkasabiru
+    angkasabiruretail:
+      +enabled: "{{ target.name == 'dwh' }}"
+      +schema: seed_angkasabiruretail
+    abdestination:
+      +enabled: "{{ target.name == 'dwh' }}"
+      +schema: seed_abdestination
+    gold:
+      +enabled: "{{ target.name == 'datahub' }}"
+      +schema: seed_gold

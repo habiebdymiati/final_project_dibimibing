@@ -1,0 +1,26 @@
+version: 2
+seeds:
+  - name: ref_company_angkasabiru
+    description: >
+      Data perusahaan yang dibentuk DWH (bukan dari API). Angkasa Biru sesuai
+      "mapping api to angkasabiru.csv": seluruh field company = DWH Generate.
+    config:
+      column_types: {dt_establishment: date}
+  - name: ref_band_angkasabiru
+    description: >
+      Tangga band per sumber: band diturunkan dari rentang job_class (bukan disalin dari endpoint bands).
+      Angkasa Biru: 7-13 BOD-4, 14-15 BOD-3, 16-17 BOD-2, 18-23 BOD-1 (Data Catalogue versi efisien).
+    config:
+      column_types: {band_sequence: integer, job_class_min: integer, job_class_max: integer}
+  - name: ref_performance_rating_angkasabiru
+    description: >
+      Konversi rating kinerja -> skor (mapping Angkasa Biru): Partially Successful 75, Successful 100,
+      Excellence 110, Outstanding 120. Dicocokkan tanpa membedakan huruf besar/kecil.
+    config:
+      column_types: {performance_score: numeric}
+  - name: map_nilai_angkasabiru
+    description: >
+      Aturan harmonisasi: nilai sumber (huruf kecil) -> nilai baku lintas perusahaan, dipakai makro baku().
+      Nilai yang belum terdaftar diteruskan apa adanya dan tertangkap uji accepted_values sebagai peringatan.
+    config:
+      column_types: {kolom: text, nilai_sumber: text, nilai_baku: text}

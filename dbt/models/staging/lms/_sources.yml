@@ -1,0 +1,7 @@
+version: 2
+sources:
+  - name: raw_lms
+    description: "Angkasa Biru LMS: learning agility lintas perusahaan (company_code AB/ABR/ABD per baris)."
+    schema: raw_table_lms
+    tables:
+      - name: learning_agility_assessments

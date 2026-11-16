@@ -1,0 +1,3 @@
+#!/bin/sh
+# dbt berjalan di virtualenv terpisah dari Airflow
+exec /home/airflow/dbt-venv/bin/dbt "$@"

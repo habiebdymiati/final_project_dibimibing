@@ -1,0 +1,56 @@
+flowchart TB
+    subgraph SUMBER["SUMBER DATA"]
+        API1["<b>Mock API Angkasa Biru</b><br/>tiruan SAPATH: 29 endpoint, login bearer<br/>fixture sample + pelengkap data"]:::api
+        API2["<b>Mock API Angkasa Biru Retail</b><br/>tiruan Rinjani: 39 endpoint, api_key<br/>fixture sample + pelengkap data"]:::api
+        API3["<b>Mock API Angkasa Biru Destination</b><br/>tiruan NATA RINJANI: 29 endpoint, bearer statis<br/>data sintetis penuh"]:::api
+        API4["<b>Mock API Angkasa Biru LMS</b><br/>sistem grup: learning agility lintas perusahaan<br/>1 endpoint, x-api-key"]:::api
+    end
+    CSV["<b>Berkas CSV referensi (lokal, tidak masuk git)</b><br/>data/refrence/<br/>TMT karyawan, nominatif, master data"]:::lokal
+
+    MINIO["<b>MinIO: arsip mentah, sumber muat ke Postgres</b><br/>bucket angkasabiru-raw, angkasabiruretail-raw<br/>satu file JSON per endpoint per batch:<br/>raw/#lt;sumber#gt;/#lt;endpoint#gt;/dt=#lt;tanggal#gt;/#lt;batch#gt;.json"]:::arsip
+
+    subgraph DWH["POSTGRES DWH (angkasabiru_dwh, port 5433)"]
+        RAW["<b>raw_#lt;sumber#gt;</b><br/>payload JSONB per endpoint + _ingestion_log<br/>persis isi arsip MinIO; 7 batch sukses terakhir"]:::raw
+        RT["<b>raw_table_#lt;sumber#gt;</b><br/>kunci payload menjadi kolom teks<br/>truncate + insert: hanya batch sukses terakhir"]:::raw
+        REF["<b>reference_#lt;sumber#gt;</b><br/>isi berkas CSV"]:::pendukung
+        SEED["<b>seed_#lt;sumber#gt;</b><br/>band, perusahaan, rating,<br/>pemetaan nilai baku"]:::pendukung
+        REG["<b>registry_#lt;sumber#gt;</b><br/>id_employee tetap,<br/>tidak pernah dinomori ulang"]:::pendukung
+        STG["<b>staging_#lt;sumber#gt;</b> (view)<br/>aturan pemetaan: stg_*, int_*"]:::silver
+        SIL["<b>silver_#lt;sumber#gt;</b> (tabel)<br/>20 tabel per perusahaan, sudah diharmonisasi"]:::silver
+    end
+
+    subgraph HUB["POSTGRES DATA HUB (angkasabiru_datahub, port 5434)"]
+        FDW["<b>fdw_silver_#lt;sumber#gt;</b> (foreign table)<br/>cermin silver, tanpa salinan data"]:::silver
+        ANT["<b>seed_gold</b> dan <b>staging_gold</b><br/>rujukan dan tabel antara"]:::pendukung
+        GOLD["<b>gold</b> (tabel)<br/>8 dim_* dan 1 fact_*, gabungan semua perusahaan"]:::gold
+    end
+
+    MB["<b>Metabase</b> (bi/ lokal, tidak masuk git)<br/>2 dashboard, role read-only, hanya baca schema gold"]:::lokal
+
+    API1 -->|"extract_api"| MINIO
+    API2 -->|"extract_api"| MINIO
+    API3 -->|"extract_api"| MINIO
+    API4 -->|"extract_api"| MINIO
+    MINIO -->|"load_raw"| RAW
+    RAW -->|"flatten_raw_tables"| RT
+    CSV -->|"transform_silver:<br/>load_reference"| REF
+    RT --> REG
+    REF --> REG
+    RT -->|"transform_silver:<br/>dbt --target dwh"| STG
+    REF --> STG
+    REG --> STG
+    SEED --> STG
+    STG --> SIL
+    SIL -->|"build_gold:<br/>fdw_silver.py"| FDW
+    FDW --> ANT
+    FDW -->|"build_gold:<br/>dbt --target datahub"| GOLD
+    ANT --> GOLD
+    GOLD --> MB
+
+    classDef api fill:#dcebfb,stroke:#3b78b8,color:#14283d;
+    classDef arsip fill:#efe9fb,stroke:#7a5fb5,color:#2a1f47;
+    classDef raw fill:#f8e6d6,stroke:#b5763a,color:#3d2610;
+    classDef pendukung fill:#f1f0ec,stroke:#8a8984,color:#26251f;
+    classDef silver fill:#e6ebf1,stroke:#66788c,color:#1f2a36;
+    classDef gold fill:#fdf0bf,stroke:#b8920f,color:#3b2f06;
+    classDef lokal fill:#ffffff,stroke:#8a8984,stroke-dasharray:6 4,color:#26251f;

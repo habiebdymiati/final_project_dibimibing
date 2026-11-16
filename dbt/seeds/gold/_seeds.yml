@@ -1,0 +1,6 @@
+version: 2
+seeds:
+  - name: ref_position_type_gold
+    description: "Nama tipe posisi per kode milik tiap perusahaan, sesuai master position_types masing-masing sumber."
+    config:
+      column_types: {source_system: text, kode: text, position_type: text}

@@ -1,0 +1,5 @@
+#!/bin/sh
+# Bangun layer DWH (staging, registry, seed, silver) semua sumber.
+#   dbt-dwh build | run | test | ...
+cmd="$1"; shift
+exec /home/airflow/dbt-venv/bin/dbt "$cmd" --target dwh "$@"

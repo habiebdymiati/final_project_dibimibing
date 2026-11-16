@@ -1,0 +1,6 @@
+version: 2
+models:
+  - name: registry_id_employee_abdestination
+    columns:
+      - {name: nip, tests: [unique, not_null]}
+      - {name: id_employee, tests: [unique, not_null]}

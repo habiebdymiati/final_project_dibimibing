@@ -1,0 +1,69 @@
+kolom,nilai_sumber,nilai_baku
+gender,male,L
+gender,female,P
+employment_status,active,aktif
+employment_status,resigned,tidak aktif
+performance_rating,successful,Successful
+performance_rating,excellent,Excellence
+performance_rating,outstanding,Outstanding
+performance_rating,partially successful,Partially Successful
+performance_rating,partialy successful,Partially Successful
+performance_rating,unsuccessful,Unsuccessful
+performance_rating,unseccessfull,Unsuccessful
+contract_type,pkwtt,PKWTT
+contract_type,pkwt,PKWT
+contract_status,active,aktif
+contract_status,terminated,berakhir
+leave_type,annual_leave,Cuti
+leave_status,approved,Disetujui
+disciplinary_type,ringan,RINGAN
+disciplinary_type,sedang,SEDANG
+disciplinary_type,berat,BERAT
+address_type,alamat_tetap,Alamat Tetap
+company_name,pt. angkasa biru retail,PT Angkasa Biru Retail
+education_level_code,elementary school,1
+education_level_code,junior high school,2
+education_level_code,senior high school,3
+education_level_code,vocational high school,4
+education_level_code,associate degree 1 (d1),5
+education_level_code,associate degree 3 (d3),7
+education_level_code,associate degree 4 (d4),8
+education_level_code,bachelor degree (s1),9
+education_level_code,master degree (s2),10
+education_level_code,kindergarten,0
+education_level_code,professional education,12
+education_level_code,informal education,13
+education_degree_type,elementary school,SD
+education_degree_type,junior high school,SLTP
+education_degree_type,senior high school,SLTA
+education_degree_type,vocational high school,SMK
+education_degree_type,associate degree 1 (d1),D1
+education_degree_type,associate degree 3 (d3),D3
+education_degree_type,associate degree 4 (d4),D4
+education_degree_type,bachelor degree (s1),S1
+education_degree_type,master degree (s2),S2
+education_degree_type,kindergarten,TK
+education_degree_type,professional education,Profesi
+education_degree_type,informal education,Non Formal
+competency_name,conceptual thinking - cth,Conceptual Thinking
+competency_name,agility & adaptability - aad,Agility & Adaptability
+competency_name,global business savvy - gbs,Global Business Savvy
+competency_name,optimizing work process - owp,Optimizing Work Process
+competency_name,impact through influence - iti,Impact Through Influence
+competency_name,intitiative - ini,Initiative
+competency_name,managing diversity - mdi,Managing Diversity
+competency_name,leading change - lch,Leading Change
+competency_name,attention to detail - atd,Attention to Detail
+competency_name,driving execution - dex,Driving Execution
+competency_name,customer focus - cfo,Customer Focus Orientation
+competency_name,building strategic partnership - bsp,Building Strategic Partnership
+competency_name,business perspective - bpr,Business Perspective
+competency_name,concern for order and accuracy - coa,Concern for Order & Accuracy
+competency_name,developing organizational capabilities - doc,Developing Organization Capabilities
+competency_name,driving innovation - din,Driving Innovation
+competency_name,strategic orientation - sor,Strategic Orientation
+competency_name,digital leadership - dle,Digital Leadership
+leave_type,cuti tahunan,Cuti
+leave_type,cuti besar,Cuti
+leave_type,cuti sakit,Cuti
+leave_type,cuti melahirkan,Cuti

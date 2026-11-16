@@ -1,0 +1,60 @@
+kolom,nilai_sumber,nilai_baku
+gender,laki-laki,L
+gender,perempuan,P
+gender,male,L
+gender,female,P
+employment_status,aktif,aktif
+employment_type,kp,PKWTT
+employment_type,pgn,PKWTT
+employment_type,dtg,PKWTT
+employment_type,dpb,PKWTT
+employment_type,aktif,PKWTT
+employment_type,pkwt,PKWT
+relationship_type,anak,Anak
+relationship_type,anak tiri,Anak Tiri
+relationship_type,anak angkat,Anak Angkat
+relationship_type,suami/istri,Pasangan
+relationship_type,ayah,Ayah
+relationship_type,ibu,Ibu
+relationship_type,saudara,Saudara
+relationship_type,saudara perempuan,Saudara
+relationship_type,saudara laki-laki,Saudara
+relationship_type,paman,Paman
+relationship_type,lainnya,Lainnya
+leave_type,leave,Cuti
+leave_type,absence,Izin
+leave_status,full approve,Disetujui
+leave_status,approve atasan,Disetujui Atasan
+leave_status,pengajuan,Diajukan
+assignment_name,pgs,Pejabat Pengganti Sementara (PGS)
+assignment_name,ph,Pelaksana Harian (PLH)
+company_name,ab,PT Angkasa Biru
+education_degree_type,sd,SD
+education_degree_type,sltp,SLTP
+education_degree_type,slta,SLTA
+education_degree_type,smk,SMK
+education_degree_type,di - diploma i,D1
+education_degree_type,dii - diploma ii,D2
+education_degree_type,diii - diploma iii,D3
+education_degree_type,div - diploma iv,D4
+education_degree_type,s1 - strata 1,S1
+education_degree_type,s2 - strata 2,S2
+education_degree_type,s3 - strata 3,S3
+institution_country,indonesia,Indonesia
+institution_country,id,Indonesia
+institution_country,australia,Australia
+institution_country,united kingdom,United Kingdom
+institution_country,france,France
+institution_country,malaysia,Malaysia
+institution_country,south korea,South Korea
+competency_category,1,Core Competency
+competency_category,2,Leadership Competency
+competency_category,3,Functional Competency
+directorate_name,operasi,Direktorat Operasi
+directorate_name,teknik,Direktorat Teknik
+directorate_name,human capital,Direktorat Human Capital
+directorate_name,komersial,Direktorat Komersial
+directorate_name,utama,Direktorat Utama
+directorate_name,strategi & pengembangan teknologi,Direktorat Strategi & Pengembangan Teknologi
+directorate_name,keuangan dan manajemen risiko,Direktorat Keuangan dan Manajemen Risiko
+directorate_name,wakil direktur utama,Wakil Direktur Utama

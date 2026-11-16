@@ -1,0 +1,84 @@
+# =============================================================================
+# Definisi sumber: PT Angkasa Biru Retail (API Rinjani)
+# Satu file per sumber. Menambah sumber baru = menambah file YAML di folder ini.
+# ATURAN: daftar endpoint mengikuti API apa adanya dan lengkap sesuai jumlahnya. Endpoint yang
+# (masih) kosong TETAP didaftarkan: tabelnya dibentuk kosong di raw_ dan raw_table_, tidak dihapus.
+# =============================================================================
+source: angkasabiruretail
+type: rest_api
+schedule: "@daily"
+
+# live   : tarik dari API, gagal bila API tidak bisa dijangkau (untuk production)
+# sample : baca fixture lokal di sample_dir (untuk development / test offline)
+mode: "${ANGKASABIRURETAIL_SOURCE_MODE:-live}"
+sample_dir: data/sample/angkasabiruretail      # satu subfolder per sumber
+
+api:
+  base_url: "${ANGKASABIRURETAIL_API_BASE_URL:-http://mock-angkasabiruretail:8000/api}"
+  timeout_seconds: 30
+  retries: 3                         # percobaan ulang untuk error sementara (koneksi, timeout, 429/5xx)
+  retry_backoff_seconds: 5           # jeda = 5s, 10s, 15s
+  default_auth_header: api_key       # api_key | x-api-key
+  api_key: "${ANGKASABIRURETAIL_API_KEY:-}"
+  cookie: "${ANGKASABIRURETAIL_SESSION_COOKIE:-}"
+
+# Layer raw
+raw:
+  schema: raw_angkasabiruretail                # di database DWH
+  minio_bucket: "${MINIO_RAW_BUCKET:-angkasabiruretail-raw}"
+  keep_batches: 7                    # jumlah batch sukses yang disimpan per endpoint di Postgres
+
+
+# Transformasi ke silver (dbt). Acuan pemetaan: data/refrence/mapping api to angkasabiruretail.csv
+dbt:
+  select: "+tag:angkasabiruretail+"
+
+# Berkas referensi (bukan endpoint API), dimuat ingestion/load_reference.py sebelum dbt.
+# Master data: sumber penanda top talent. Hanya baris perusahaan ini dan kolom yang dipakai; sisanya data pribadi dan perusahaan lain.
+reference_files:
+  - {name: "master_data_angkasabiruretail", path: "data/refrence/master_data - emp.csv", saring: {"Kode Perusahaan": "ABR"}, kolom: ["NIK", "Top Talent"]}
+
+# optional: true = 404 dianggap "endpoint ini memang tidak ada" dan dimuat kosong, bukan kegagalan.
+# employee_contracts dan employee_addresses (underscore) duplikat dari employee-contracts / employee-address
+# (hyphen); API mengembalikan 404 untuk keduanya, sedangkan versi hyphen berisi data.
+endpoints:
+  - {name: "companies", path: "/companies"}
+  - {name: "areas", path: "/areas"}
+  - {name: "directorates", path: "/directorates"}
+  - {name: "groups", path: "/groups"}
+  - {name: "org-unit-types", path: "/org-unit-types", auth_header: x-api-key}
+  - {name: "bands", path: "/bands"}
+  - {name: "grades", path: "/grades"}
+  - {name: "position_levels", path: "/position_levels"}
+  - {name: "position_types", path: "/position_types"}
+  - {name: "job_families", path: "/job_families"}
+  - {name: "job-function", path: "/job-function", auth_header: x-api-key}
+  - {name: "competences", path: "/competences"}
+  - {name: "org-units", path: "/org-units", auth_header: x-api-key}
+  - {name: "company-document", path: "/company-document", auth_header: x-api-key}
+  - {name: "org-unit-documents", path: "/org-unit-documents", auth_header: x-api-key}
+  - {name: "company_addresses", path: "/company_addresses"}
+  - {name: "positions", path: "/positions"}
+  - {name: "position-variants", path: "/position-variants"}
+  - {name: "position-documents", path: "/position-documents"}
+  - {name: "employees", path: "/employees"}
+  - {name: "employee-profile", path: "/employee-profile"}
+  - {name: "employee-personal-details", path: "/employee-personal-details"}
+  - {name: "employee-address", path: "/employee-address"}
+  - {name: "employee_addresses", path: "/employee_addresses", optional: true}
+  - {name: "spouses", path: "/spouses"}
+  - {name: "childrens", path: "/childrens"}
+  - {name: "educations", path: "/educations"}
+  - {name: "certificates", path: "/certificates"}
+  - {name: "position_histories", path: "/position_histories"}
+  - {name: "employee-assignment-histories", path: "/employee-assignment-histories", auth_header: x-api-key}
+  - {name: "employee_contracts", path: "/employee_contracts", optional: true}
+  - {name: "employee-contracts", path: "/employee-contracts"}
+  - {name: "leave-histories", path: "/leave-histories", auth_header: x-api-key}
+  - {name: "performances", path: "/performances"}
+  - {name: "assessment_results", path: "/assessment_results"}
+  - {name: "assessment_result_by_competences", path: "/assessment_result_by_competences"}
+  - {name: "learnings", path: "/learnings", auth_header: x-api-key}
+  - {name: "trainings", path: "/trainings"}
+  - {name: "hukdis", path: "/hukdis"}
+

@@ -1,0 +1,9 @@
+source_system,kode,position_type
+angkasabiru,S,Struktural
+angkasabiru,F,Fungsional
+angkasabiru,N,Non Struktural
+angkasabiruretail,1,Struktural
+angkasabiruretail,2,Fungsional
+angkasabiruretail,3,Komisaris
+angkasabiruretail,4,Anggota Komite
+angkasabiruretail,5,Direksi

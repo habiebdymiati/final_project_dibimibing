@@ -1,0 +1,44 @@
+flowchart TB
+    M(["<b>Ada masalah</b>"]):::mulai
+    Q1{{"Semua layanan hidup?<br/>make ps"}}:::tanya
+    A1["<b>Jalankan make up.</b><br/>Layanan tidak hidup sendiri setelah komputer dinyalakan ulang.<br/>Bila tetap mati: docker compose logs --tail=100 nama_layanan"]:::aksi
+    Q2{{"Di Airflow (localhost:8080), DAG ada<br/>dan punya run terbaru?"}}:::tanya
+    A2["<b>DAG hilang:</b> airflow dags list-import-errors.<br/>Biasanya salah tulis di sources/*.yaml<br/>atau airflow/dags/source_pipelines.py"]:::aksi
+    A3["<b>Run tidak muncul:</b> DAG masih paused?<br/>Jadwalnya 07.00 WIB. Run sebelumnya masih<br/>berjalan? (max_active_runs = 1)"]:::aksi
+    Q3{{"Ada task berwarna merah?"}}:::tanya
+    Q4{{"Klik kotak merah PERTAMA, buka Logs.<br/>Task mana?"}}:::tanya
+    B1["<b>check_connections</b><br/>Infrastruktur:<br/>make ps, MINIO_*,<br/>DWH_*, DATAHUB_* di .env"]:::cek
+    B2["<b>extract_api</b><br/>API: baca kolom error<br/>di _ingestion_log.<br/>5xx sementara, 401/403<br/>kredensial, 404 path"]:::cek
+    B2B["<b>load_raw</b><br/>Baca status load_failed<br/>di _ingestion_log.<br/>Arsip MinIO masih ada?<br/>MinIO / DWH hidup?"]:::cek
+    B3["<b>flatten_raw_tables</b><br/>Database: baca pesan SQL.<br/>Tabel tetap berisi data<br/>lama (satu transaksi)"]:::cek
+    B4["<b>transform_silver</b><br/>Berkas CSV di data/ ada?<br/>Cari ERROR atau FAIL<br/>di log dbt, abaikan SKIP"]:::cek
+    B5["<b>build_gold</b><br/>Silver terisi? Koneksi ke DWH?<br/>Tes relasi di log dbt?<br/>Antre flock lebih 30 menit?"]:::cek
+    PERBAIKI["<b>Perbaiki penyebabnya, lalu Clear task merah dengan opsi Downstream.</b><br/>Tahap sesudahnya ikut berjalan sampai gold."]:::ok
+    L["<b>Semua hijau tetapi data salah: telusuri mundur</b><br/>gold, fdw_silver, silver, staging, raw_table, _ingestion_log, lalu API.<br/>Lapisan paling awal yang nilainya sudah salah menunjukkan penyebabnya.<br/>Bandingkan juga dengan angka acuan di bagian 5."]:::ok
+
+    M --> Q1
+    Q1 -->|"tidak"| A1
+    Q1 -->|"ya"| Q2
+    Q2 -->|"DAG hilang"| A2
+    Q2 -->|"run baru tidak ada"| A3
+    Q2 -->|"ya"| Q3
+    Q3 -->|"ya"| Q4
+    Q3 -->|"tidak"| L
+    Q4 --> B1
+    Q4 --> B2
+    Q4 --> B2B
+    Q4 --> B3
+    Q4 --> B4
+    Q4 --> B5
+    B1 --> PERBAIKI
+    B2 --> PERBAIKI
+    B2B --> PERBAIKI
+    B3 --> PERBAIKI
+    B4 --> PERBAIKI
+    B5 --> PERBAIKI
+
+    classDef mulai fill:#dcebfb,stroke:#3b78b8,color:#14283d;
+    classDef tanya fill:#f1f0ec,stroke:#8a8984,color:#26251f;
+    classDef aksi fill:#ffffff,stroke:#8a8984,color:#26251f;
+    classDef cek fill:#fdf0bf,stroke:#b8920f,color:#3b2f06;
+    classDef ok fill:#e8f3e6,stroke:#5c9a55,color:#1e3a1b;

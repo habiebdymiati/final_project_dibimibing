@@ -1,0 +1,84 @@
+version: 2
+# Foreign table cermin silver_<sumber> di Data Hub; dibuat ingestion/fdw_silver.py sebelum dbt berjalan.
+sources:
+  - name: fdw_angkasabiru
+    schema: fdw_silver_angkasabiru
+    tables:
+      - name: company_angkasabiru
+      - name: org_unit_angkasabiru
+      - name: position_master_angkasabiru
+      - name: position_variant_angkasabiru
+      - name: band_angkasabiru
+      - name: position_competency_requirement_angkasabiru
+      - name: job_family_angkasabiru
+      - name: job_function_angkasabiru
+      - name: employee_profile_angkasabiru
+      - name: top_talent_angkasabiru
+      - name: employee_identification_angkasabiru
+      - name: employee_address_angkasabiru
+      - name: employee_family_member_angkasabiru
+      - name: employee_contract_angkasabiru
+      - name: employee_position_history_angkasabiru
+      - name: employee_assignment_history_angkasabiru
+      - name: employee_performance_history_angkasabiru
+      - name: employee_leave_history_angkasabiru
+      - name: employee_education_history_angkasabiru
+      - name: employee_disciplinary_angkasabiru
+      - name: learning_history_angkasabiru
+      - name: learning_agility_assessment_angkasabiru
+      - name: competency_assessment_angkasabiru
+      - name: employee_secondary_assignment_angkasabiru
+  - name: fdw_angkasabiruretail
+    schema: fdw_silver_angkasabiruretail
+    tables:
+      - name: company_angkasabiruretail
+      - name: org_unit_angkasabiruretail
+      - name: position_master_angkasabiruretail
+      - name: position_variant_angkasabiruretail
+      - name: band_angkasabiruretail
+      - name: position_competency_requirement_angkasabiruretail
+      - name: job_family_angkasabiruretail
+      - name: job_function_angkasabiruretail
+      - name: employee_profile_angkasabiruretail
+      - name: top_talent_angkasabiruretail
+      - name: employee_identification_angkasabiruretail
+      - name: employee_address_angkasabiruretail
+      - name: employee_family_member_angkasabiruretail
+      - name: employee_contract_angkasabiruretail
+      - name: employee_position_history_angkasabiruretail
+      - name: employee_assignment_history_angkasabiruretail
+      - name: employee_performance_history_angkasabiruretail
+      - name: employee_leave_history_angkasabiruretail
+      - name: employee_education_history_angkasabiruretail
+      - name: employee_disciplinary_angkasabiruretail
+      - name: learning_history_angkasabiruretail
+      - name: learning_agility_assessment_angkasabiruretail
+      - name: competency_assessment_angkasabiruretail
+      - name: employee_secondary_assignment_angkasabiruretail
+  - name: fdw_abdestination
+    schema: fdw_silver_abdestination
+    tables:
+      - name: company_abdestination
+      - name: org_unit_abdestination
+      - name: position_master_abdestination
+      - name: position_variant_abdestination
+      - name: band_abdestination
+      - name: position_competency_requirement_abdestination
+      - name: job_family_abdestination
+      - name: job_function_abdestination
+      - name: employee_profile_abdestination
+      - name: top_talent_abdestination
+      - name: employee_identification_abdestination
+      - name: employee_address_abdestination
+      - name: employee_family_member_abdestination
+      - name: employee_contract_abdestination
+      - name: employee_position_history_abdestination
+      - name: employee_assignment_history_abdestination
+      - name: employee_performance_history_abdestination
+      - name: employee_leave_history_abdestination
+      - name: employee_education_history_abdestination
+      - name: employee_disciplinary_abdestination
+      - name: learning_history_abdestination
+      - name: learning_agility_assessment_abdestination
+      - name: competency_assessment_abdestination
+      - name: employee_secondary_assignment_abdestination

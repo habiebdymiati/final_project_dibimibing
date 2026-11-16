@@ -1,0 +1,47 @@
+flowchart TB
+    AWAL["<b>Task extract_api dimulai</b><br/>Percobaan pertama (termasuk setelah Clear): semua endpoint.<br/>Percobaan ulang otomatis: hanya endpoint yang belum terarsip pada run yang sama."]:::mulai
+    AMBIL["Ambil satu endpoint dari sources/#lt;sumber#gt;.yaml"]:::kerja
+    JAWAB{{"Jawaban API?"}}:::tanya
+    ULANG["<b>Coba lagi</b>, maks. 4 percobaan<br/>jeda 5, 10, 15 detik"]:::kerja
+    ARSIP["Tulis arsip JSON ke MinIO<br/>_ingestion_log: <b>extracted</b>"]:::ok
+    OPSI{{"optional: true<br/>di YAML?"}}:::tanya
+    KOSONG["Diarsipkan kosong<br/>_ingestion_log: <b>extracted</b>, 0 baris"]:::ok
+    GAGAL["_ingestion_log: <b>failed</b> + pesan error<br/>endpoint lain tetap diproses"]:::salah
+    LAGI{{"Masih ada<br/>endpoint?"}}:::tanya
+    ADA{{"Ada endpoint<br/>yang gagal?"}}:::tanya
+    BERES["<b>Task extract_api sukses</b>"]:::ok
+    RETRY["<b>Task gagal</b>: Endpoint gagal diekstrak: [...]<br/>Airflow mengulang maks. 3 kali, jeda 5 menit; yang sudah<br/>terarsip tidak ditarik lagi. load_raw belum berjalan."]:::salah
+
+    subgraph LOADRAW["Task load_raw (berjalan setelah extract_api sukses; tidak menyentuh API)"]
+        direction TB
+        L1["Per endpoint: baca baris 'extracted' run ini dari _ingestion_log,<br/>ambil file JSON-nya dari MinIO (kolom archive_path)"]:::kerja
+        L2{{"Berhasil dibaca<br/>dan dimuat?"}}:::tanya
+        L3["Muat ke raw_#lt;sumber#gt; (JSONB)<br/>_ingestion_log: <b>success</b>; batch di atas 7 terbaru dihapus dari Postgres"]:::ok
+        L4["_ingestion_log: <b>load_failed</b> + pesan error<br/>Task gagal; percobaan ulang membaca ulang arsip MinIO saja"]:::salah
+        L5["<b>Selesai</b>: raw_ terisi persis isi arsip; lanjut flatten_raw_tables"]:::ok
+        L1 --> L2
+        L2 -->|"ya"| L3 --> L5
+        L2 -->|"tidak"| L4
+    end
+
+    AWAL --> AMBIL --> JAWAB
+    JAWAB -->|"200"| ARSIP --> LAGI
+    JAWAB -->|"429, 5xx, 520-524,<br/>koneksi putus, timeout"| ULANG
+    ULANG -->|"masih ada percobaan"| JAWAB
+    ULANG -->|"percobaan habis"| GAGAL
+    JAWAB -->|"401, 403, 400<br/>(Angkasa Biru: 401 login ulang dulu)"| GAGAL
+    JAWAB -->|"404"| OPSI
+    OPSI -->|"ya"| KOSONG --> LAGI
+    OPSI -->|"tidak"| GAGAL
+    GAGAL --> LAGI
+    LAGI -->|"ya"| AMBIL
+    LAGI -->|"tidak"| ADA
+    ADA -->|"tidak"| BERES
+    ADA -->|"ya"| RETRY
+    BERES --> LOADRAW
+
+    classDef mulai fill:#dcebfb,stroke:#3b78b8,color:#14283d;
+    classDef kerja fill:#ffffff,stroke:#8a8984,color:#26251f;
+    classDef tanya fill:#f1f0ec,stroke:#8a8984,color:#26251f;
+    classDef ok fill:#e8f3e6,stroke:#5c9a55,color:#1e3a1b;
+    classDef salah fill:#fbe3e1,stroke:#b3261e,color:#47100c;

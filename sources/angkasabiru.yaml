@@ -1,0 +1,96 @@
+# =============================================================================
+# Definisi sumber: PT Angkasa Biru Indonesia / Angkasa Biru Airports (API SAPATH)
+# Autentikasi: POST /login (username+password dari .env) -> bearer token (TTL 1 jam;
+# konektor otomatis login ulang saat 401). Semua endpoint berpaginasi page/limit.
+# Catatan: endpoint ber-parameter nik (getEmployeePerformance dll.) ternyata
+# mengembalikan SELURUH pegawai bila nik tidak dikirim, jadi tidak perlu fan-out per NIK.
+# =============================================================================
+source: angkasabiru
+type: rest_api
+schedule: "@daily"
+
+mode: "${ANGKASABIRU_SOURCE_MODE:-live}"
+sample_dir: data/sample/angkasabiru
+
+api:
+  base_url: "${ANGKASABIRU_API_BASE_URL:-http://mock-angkasabiru:8000/api/portalhc/v1}"
+  timeout_seconds: 120               # halaman besar (limit 2000) bisa lambat
+  retries: 3
+  retry_backoff_seconds: 5
+  auth:
+    type: bearer_login
+    login_path: /login
+    username: "${ANGKASABIRU_API_USERNAME:-}"
+    password: "${ANGKASABIRU_API_PASSWORD:-}"
+  pagination:
+    page_param: page
+    limit_param: limit
+    limit: 2000
+    max_pages: 1000
+
+raw:
+  schema: raw_angkasabiru            # di database DWH
+  minio_bucket: "${ANGKASABIRU_MINIO_BUCKET:-angkasabiru-raw}"
+  keep_batches: 7
+
+
+# Transformasi ke silver (dbt). Diisi hanya bila model staging sumber ini sudah ada di
+# dbt/models/staging/<sumber>/; tanpa blok ini pipeline berhenti di raw_table_.
+# Acuan pemetaan: data/refrence/mapping api to angkasabiru.csv
+dbt:
+  select: "+tag:angkasabiru+"
+
+# Berkas referensi (bukan endpoint API) yang dipakai aturan transformasi. Dimuat ke schema
+# reference_angkasabiru oleh ingestion/load_reference.py tepat sebelum dbt berjalan.
+#   tmt_karyawan_angkasabiru : TMT tiap pegawai; menentukan urutan pembentukan id_employee (lihat dbt/models/registry).
+# Folder data/ tidak masuk git (data pegawai), jadi berkas ini harus disediakan di mesin yang menjalankan.
+reference_files:
+  - {name: "tmt_karyawan_angkasabiru", path: "data/refrence/Data Tanggal Lahir Angkasa Biru.csv"}
+  # Nominatif 8 September 2026 (bersifat history): hanya mengisi kolom yang kosong dari API.
+  - {name: "nominatif_angkasabiru", path: "data/refrence/Data Pegawai 08092026 - Nominatif.csv"}
+  # Master data: sumber penanda top talent. Hanya baris perusahaan ini dan kolom yang dipakai; sisanya data pribadi dan perusahaan lain.
+  - {name: "master_data_angkasabiru", path: "data/refrence/master_data - emp.csv", saring: {"Kode Perusahaan": "AB"}, kolom: ["NIK", "Top Talent"]}
+
+# Nama endpoint = nama tabel raw (snake_case); path = nama handler API.
+# ATURAN: daftar endpoint mengikuti API apa adanya dan lengkap sesuai jumlahnya. Endpoint yang
+# (masih) kosong TETAP didaftarkan: tabelnya dibentuk kosong di raw_ dan raw_table_, tidak dihapus.
+endpoints:
+  # --- Organization
+  - {name: "regions", path: "/getRegion"}
+  - {name: "branches", path: "/getBranch"}
+  - {name: "directorates", path: "/getDirectorate"}
+  - {name: "groups", path: "/getGroup"}
+  - {name: "divisions", path: "/getDivision"}          # saat ini API membalas {} (kosong)
+  - {name: "positions", path: "/getPosition"}
+  # --- Employee Master
+  - {name: "employee_profile", path: "/getEmployeeProfile"}
+  # getEmployeeIdentification: halaman >=2 selalu 500/timeout di sisi server (berapa pun limit),
+  # dan satu halaman besar >2000 baris juga timeout -> tarik per NIK dari roster employee_profile.
+  - name: "employee_identification"
+    path: "/getEmployeeIdentification"
+    page_limit: 100
+    iterate: {param: nik, source: employee_profile, field: new_nip}
+  - {name: "employee_address", path: "/getEmployeeAddress"}
+  - {name: "employee_leave_history", path: "/getEmployeeLeaveHistory"}
+  - {name: "employee_education_history", path: "/getEmployeeEducationHistory"}
+  - {name: "employee_assignment_history", path: "/getEmployeeAssignmentHistory"}
+  - {name: "employee_family_member", path: "/getEmployeeFamilyMember"}
+  # --- Employee Transactional + master pendukung
+  - {name: "employee_performance", path: "/getEmployeePerformance"}
+  - {name: "employee_learning", path: "/getEmployeeLearning"}
+  - {name: "employee_position_history", path: "/getEmployeePositionHistory"}
+  - {name: "units", path: "/getUnit"}
+  - {name: "position_master", path: "/getPositionMaster"}
+  - {name: "position_variants", path: "/getPositionVariant"}
+  - {name: "companies", path: "/getCompany"}              # company* saat ini kosong di sisi API
+  - {name: "company_addresses", path: "/getCompanyAddress"}
+  - {name: "company_documents", path: "/getCompanyDocument"}
+  - {name: "company_types", path: "/getCompanyType"}
+  - {name: "bands", path: "/getBand"}
+  - {name: "position_types", path: "/getPositionType"}
+  - {name: "position_competency_requirements", path: "/getPositionCompetencyRequirement"}
+  - {name: "job_families", path: "/getJobFamily"}
+  - {name: "job_functions", path: "/getJobFunction"}
+  # Endpoint yang tidak ada di API asli; dilengkapi instance tiruan (mock) sejak 15 November 2026
+  - {name: "competency_assessment", path: "/getCompetencyAssessment"}  # job fit (katalog BRD 4.5)
+

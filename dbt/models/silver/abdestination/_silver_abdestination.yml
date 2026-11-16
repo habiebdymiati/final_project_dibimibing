@@ -1,0 +1,84 @@
+version: 2
+
+# Tabel silver Angkasa Biru Destinasi: silver_abdestination.<entitas>_abdestination (API NATA RINJANI,
+# field sudah bergaya katalog sehingga pemetaannya tipis). Uji kunci menggagalkan run.
+models:
+  - name: top_talent_abdestination
+    columns:
+      - {name: id_employee, tests: [unique, not_null]}
+      - {name: is_top_talent, tests: [not_null]}
+  - name: company_abdestination
+    columns:
+      - {name: id_company, tests: [unique, not_null]}
+  - name: org_unit_abdestination
+    columns:
+      - {name: id_org_unit, tests: [unique, not_null]}
+  - name: position_master_abdestination
+    columns:
+      - {name: id_position_master, tests: [unique, not_null]}
+  - name: position_variant_abdestination
+    columns:
+      - {name: id_position_variant, tests: [unique, not_null]}
+  - name: band_abdestination
+    columns:
+      - {name: id_band, tests: [unique, not_null]}
+  - name: job_family_abdestination
+    columns:
+      - {name: id_job_family, tests: [unique, not_null]}
+  - name: job_function_abdestination
+    columns:
+      - {name: id_job_function, tests: [unique, not_null]}
+  - name: employee_profile_abdestination
+    columns:
+      - {name: id_employee, tests: [unique, not_null]}
+      - {name: new_nip, tests: [unique, not_null]}
+  - name: employee_identification_abdestination
+    columns:
+      - {name: id_employee, tests: [unique, not_null]}
+  - name: employee_address_abdestination
+    columns:
+      - {name: id_employee, tests: [not_null]}
+  - name: employee_family_member_abdestination
+    columns:
+      - {name: id_family_member, tests: [unique, not_null]}
+      - {name: id_employee, tests: [not_null]}
+  - name: employee_contract_abdestination
+    columns:
+      - {name: id_contract, tests: [unique, not_null]}
+      - {name: id_employee, tests: [not_null]}
+  - name: employee_position_history_abdestination
+    columns:
+      - {name: id_position_history, tests: [unique, not_null]}
+      - {name: new_nip, tests: [not_null]}
+  - name: employee_assignment_history_abdestination
+    columns:
+      - {name: id_assignment_history, tests: [unique, not_null]}
+      - {name: id_employee, tests: [not_null]}
+  - name: employee_secondary_assignment_abdestination
+    columns:
+      - {name: id_secondary_assignment, tests: [unique, not_null]}
+      - {name: id_employee, tests: [not_null]}
+  - name: employee_performance_history_abdestination
+    columns:
+      - {name: id_performance_history, tests: [unique, not_null]}
+      - {name: id_employee, tests: [not_null]}
+  - name: employee_leave_history_abdestination
+    columns:
+      - {name: id_leave_history, tests: [unique, not_null]}
+      - {name: id_employee, tests: [not_null]}
+  - name: employee_education_history_abdestination
+    columns:
+      - {name: id_education_history, tests: [unique, not_null]}
+      - {name: id_employee, tests: [not_null]}
+  - name: learning_history_abdestination
+    columns:
+      - {name: id_learning, tests: [unique, not_null]}
+      - {name: id_employee, tests: [not_null]}
+  - name: learning_agility_assessment_abdestination
+    columns:
+      - {name: id_employee, tests: [not_null]}
+      - {name: learning_agility_score, tests: [not_null]}
+  - name: competency_assessment_abdestination
+    columns:
+      - {name: id_employee, tests: [not_null]}
+      - {name: job_fit_score, tests: [not_null]}

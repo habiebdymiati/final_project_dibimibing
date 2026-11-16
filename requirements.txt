@@ -1,0 +1,3 @@
+# Dependensi Python untuk ingestion, publish, dan test (di luar bawaan image Airflow)
+minio==7.2.9
+pytest==8.3.3

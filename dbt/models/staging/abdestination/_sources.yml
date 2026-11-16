@@ -1,0 +1,41 @@
+version: 2
+sources:
+  - name: raw_abd
+    description: "PT Angkasa Biru Destinasi (NATA RINJANI): payload API yang sudah didatarkan."
+    schema: raw_table_abdestination
+    tables:
+      - name: company_types
+      - name: companies
+      - name: company_addresses
+      - name: company_documents
+      - name: org_unit_types
+      - name: org_units
+      - name: org_unit_documents
+      - name: job_families
+      - name: job_functions
+      - name: position_types
+      - name: position_masters
+      - name: position_variants
+      - name: bands
+      - name: position_documents
+      - name: position_competency_requirements
+      - name: employee_position_histories
+      - name: employee_secondary_assignments
+      - name: employee_profiles
+      - name: employee_identifications
+      - name: employee_addresses
+      - name: employee_performance_histories
+      - name: employee_leave_histories
+      - name: employee_education_histories
+      - name: employee_assignment_histories
+      - name: employee_family_members
+      - name: employee_contracts
+      - name: performance_histories
+      - name: learning_histories
+      - name: learning_agility_assessments
+      - name: competency_assessments
+  - name: ref_abd
+    schema: reference_abdestination
+    tables:
+      - name: master_data_abdestination
+        description: "Master data: NIK dan Top Talent, baris ABD saja."

@@ -1,0 +1,160 @@
+version: 2
+
+# Tabel silver Angkasa Biru: silver.<entitas>_angkasabiru, mengikuti struktur Data Catalogue versi efisien -
+# Mapping Field API (bagian 2-4). Akhiran _angkasabiru menandai pemilik datanya.
+# Uji di bawah menjaga kunci utama: gagal uji = run gagal, supaya data kembar tidak lolos diam-diam.
+# Uji relasi (relationships) berstatus peringatan karena kualitas rujukan di sumber belum sempurna.
+models:
+  - name: top_talent_angkasabiru
+    columns:
+      - {name: id_employee, tests: [unique, not_null]}
+      - {name: is_top_talent, tests: [not_null]}
+  - name: company_angkasabiru
+    columns:
+      - {name: id_company, tests: [unique, not_null]}
+  - name: org_unit_angkasabiru
+    columns:
+      - {name: id_org_unit, tests: [unique, not_null]}
+      - name: fk_id_company
+        tests:
+          - relationships: {to: ref('company_angkasabiru'), field: id_company}
+  - name: position_master_angkasabiru
+    columns:
+      - {name: id_position_master, tests: [unique, not_null]}
+  - name: position_variant_angkasabiru
+    columns:
+      - {name: id_position_variant, tests: [unique, not_null]}
+      - name: fk_position_master_id
+        tests:
+          - relationships: {to: ref('position_master_angkasabiru'), field: id_position_master, config: {severity: warn}}
+      - name: fk_org_unit_id
+        tests:
+          - relationships: {to: ref('org_unit_angkasabiru'), field: id_org_unit, config: {severity: warn}}
+      - name: fk_band_id
+        tests:
+          - relationships: {to: ref('band_angkasabiru'), field: id_band}
+  - name: band_angkasabiru
+    columns:
+      - {name: id_band, tests: [unique, not_null]}
+  - name: position_competency_requirement_angkasabiru
+    columns:
+      - {name: id_competency, tests: [not_null]}
+      - name: id_position_master
+        tests:
+          - not_null
+          - relationships: {to: ref('position_master_angkasabiru'), field: id_position_master, config: {severity: warn}}
+  - name: job_family_angkasabiru
+    columns:
+      - {name: id_job_family, tests: [unique, not_null]}
+  - name: job_function_angkasabiru
+    columns:
+      - {name: id_job_function, tests: [unique, not_null]}
+  - name: employee_profile_angkasabiru
+    columns:
+      - name: employment_status
+        tests:
+          - accepted_values: {values: ['aktif', 'tidak aktif'], config: {severity: warn}}
+      - {name: id_employee, tests: [unique, not_null]}
+      - {name: new_nip, tests: [unique, not_null]}
+  - name: employee_identification_angkasabiru
+    columns:
+      - name: gender
+        tests:
+          - accepted_values: {values: ['L', 'P'], config: {severity: warn}}
+      - name: employment_type
+        tests:
+          - accepted_values: {values: ['PKWTT', 'PKWT', 'Non Pegawai', 'Talent Mobility'], config: {severity: warn}}
+      - name: id_employee
+        tests:
+          - unique
+          - not_null
+          - relationships: {to: ref('employee_profile_angkasabiru'), field: id_employee, config: {severity: warn}}
+  - name: employee_address_angkasabiru
+    columns:
+      - name: address_type
+        tests:
+          - accepted_values: {values: ['Alamat Tetap'], config: {severity: warn}}
+      - name: id_employee
+        tests:
+          - not_null
+          - relationships: {to: ref('employee_profile_angkasabiru'), field: id_employee, config: {severity: warn}}
+  - name: employee_family_member_angkasabiru
+    columns:
+      - name: gender
+        tests:
+          - accepted_values: {values: ['L', 'P'], config: {severity: warn}}
+      - name: relationship_type
+        tests:
+          - accepted_values: {values: ['Anak', 'Anak Angkat', 'Anak Tiri', 'Pasangan', 'Ayah', 'Ibu', 'Saudara', 'Paman', 'Lainnya'], config: {severity: warn}}
+      - {name: id_family_member, tests: [unique, not_null]}
+      - name: id_employee
+        tests:
+          - relationships: {to: ref('employee_profile_angkasabiru'), field: id_employee, config: {severity: warn}}
+  - name: employee_contract_angkasabiru
+    columns:
+      - name: contract_type
+        tests:
+          - accepted_values: {values: ['PKWTT', 'PKWT'], config: {severity: warn}}
+      - name: contract_status
+        tests:
+          - accepted_values: {values: ['aktif', 'berakhir'], config: {severity: warn}}
+  - name: employee_position_history_angkasabiru
+    columns:
+      - {name: id_position_history, tests: [unique, not_null]}
+      - name: new_nip
+        tests:
+          - relationships: {to: ref('employee_profile_angkasabiru'), field: new_nip, config: {severity: warn}}
+  - name: employee_assignment_history_angkasabiru
+    columns:
+      - name: assignment_name
+        tests:
+          - accepted_values: {values: ['Pelaksana Tugas (PLT)', 'Pejabat Pengganti Sementara (PGS)', 'Pelaksana Harian (PLH)'], config: {severity: warn}}
+      - {name: id_assignment_history, tests: [unique, not_null]}
+  - name: employee_performance_history_angkasabiru
+    columns:
+      - name: performance_rating
+        tests:
+          - accepted_values: {values: ['Partially Successful', 'Successful', 'Excellence', 'Outstanding', 'Unsuccessful'], config: {severity: warn}}
+      - {name: id_performance_history, tests: [unique, not_null]}
+  - name: employee_leave_history_angkasabiru
+    columns:
+      - name: leave_type
+        tests:
+          - accepted_values: {values: ['Cuti', 'Izin'], config: {severity: warn}}
+      - name: leave_status
+        tests:
+          - accepted_values: {values: ['Disetujui', 'Disetujui Atasan', 'Diajukan'], config: {severity: warn}}
+      - {name: id_leave_history, tests: [unique, not_null]}
+  - name: employee_education_history_angkasabiru
+    columns:
+      - name: education_degree_type
+        tests:
+          - accepted_values: {values: ['TK', 'SD', 'SLTP', 'SLTA', 'SMK', 'D1', 'D2', 'D3', 'D4', 'S1', 'S2', 'S3', 'Profesi', 'Non Formal'], config: {severity: warn}}
+      - {name: id_education_history, tests: [unique, not_null]}
+  - name: employee_disciplinary_angkasabiru
+    columns:
+      - name: disciplinary_type
+        tests:
+          - accepted_values: {values: ['RINGAN', 'SEDANG', 'BERAT'], config: {severity: warn}}
+  - name: learning_history_angkasabiru
+    columns:
+      - {name: id_learning, tests: [unique, not_null]}
+      - name: id_employee
+        tests:
+          - relationships: {to: ref('employee_profile_angkasabiru'), field: id_employee, config: {severity: warn}}
+  - name: learning_agility_assessment_angkasabiru
+    columns:
+      - {name: id_employee, tests: [not_null]}
+      - {name: assessment_period, tests: [not_null]}
+      - {name: learning_agility_score, tests: [not_null]}
+  - name: competency_assessment_angkasabiru
+    columns:
+      - {name: job_fit_score, tests: [not_null]}
+      - name: id_employee
+        tests:
+          - not_null
+          - relationships: {to: ref('employee_profile_angkasabiru'), field: id_employee, config: {severity: warn}}
+  - name: employee_secondary_assignment_angkasabiru
+    columns:
+      - {name: id_secondary_assignment, tests: [unique, not_null]}
+      - {name: id_employee, tests: [not_null]}

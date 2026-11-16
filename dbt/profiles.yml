@@ -1,0 +1,23 @@
+angkasabiruretail:
+  target: dwh
+  outputs:
+    # Warehouse antara: raw -> staging -> intermediate -> core
+    dwh:
+      type: postgres
+      host: "{{ env_var('DWH_HOST', 'localhost') }}"
+      port: "{{ env_var('DWH_PORT', '5433') | as_number }}"
+      user: "{{ env_var('DWH_USER') }}"
+      password: "{{ env_var('DWH_PASSWORD') }}"
+      dbname: "{{ env_var('DWH_DB') }}"
+      schema: staging
+      threads: 4
+    # Target akhir: marts (star schema) dibangun dari core yang sudah dipublish
+    datahub:
+      type: postgres
+      host: "{{ env_var('DATAHUB_HOST', 'localhost') }}"
+      port: "{{ env_var('DATAHUB_PORT', '5434') | as_number }}"
+      user: "{{ env_var('DATAHUB_USER') }}"
+      password: "{{ env_var('DATAHUB_PASSWORD') }}"
+      dbname: "{{ env_var('DATAHUB_DB') }}"
+      schema: marts
+      threads: 4

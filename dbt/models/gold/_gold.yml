@@ -1,0 +1,65 @@
+version: 2
+
+# Star schema gold (katalog BRD 6.2): 2 fact + 10 dimensi, gabungan semua perusahaan. Baris UNKNOWN pada dimensi menjamin setiap
+# foreign key fact punya pasangan, jadi uji relasinya menggagalkan run bila ada yang lepas.
+models:
+  - name: int_employee_metrics
+    columns:
+      - {name: id_employee, tests: [unique, not_null]}
+  - name: int_posisi_pegawai
+    columns:
+      - {name: new_nip, tests: [not_null]}
+  - name: dim_date
+    columns: [{name: date_key, tests: [unique, not_null]}]
+  - name: dim_company
+    columns: [{name: company_key, tests: [unique, not_null]}]
+  - name: dim_band
+    columns: [{name: band_key, tests: [unique, not_null]}]
+  - name: dim_contract_type
+    columns: [{name: contract_type_key, tests: [unique, not_null]}]
+  - name: dim_org_unit
+    columns: [{name: org_unit_key, tests: [unique, not_null]}]
+  - name: dim_position_master
+    columns: [{name: position_master_key, tests: [unique, not_null]}]
+  - name: dim_position_variant
+    columns:
+      - {name: position_variant_key, tests: [unique, not_null]}
+      - name: position_master_key
+        tests: [{relationships: {to: ref('dim_position_master'), field: position_master_key}}]
+      - name: org_unit_key
+        tests: [{relationships: {to: ref('dim_org_unit'), field: org_unit_key}}]
+      - name: band_key
+        tests: [{relationships: {to: ref('dim_band'), field: band_key}}]
+  - name: dim_employee
+    columns: [{name: employee_key, tests: [unique, not_null]}]
+  - name: fact_employee_snapshot
+    columns:
+      - {name: snapshot_key, tests: [unique, not_null]}
+      - name: employee_key
+        tests: [{relationships: {to: ref('dim_employee'), field: employee_key}}]
+      - name: position_variant_key
+        tests: [{relationships: {to: ref('dim_position_variant'), field: position_variant_key}}]
+      - name: org_unit_key
+        tests: [{relationships: {to: ref('dim_org_unit'), field: org_unit_key}}]
+      - name: company_key
+        tests: [{relationships: {to: ref('dim_company'), field: company_key}}]
+      - name: date_key
+        tests: [{relationships: {to: ref('dim_date'), field: date_key}}]
+      - name: contract_type_key
+        tests: [{relationships: {to: ref('dim_contract_type'), field: contract_type_key}}]
+      - {name: is_top_talent, tests: [not_null]}
+  - name: dim_period
+    columns: [{name: period_key, tests: [unique, not_null]}]
+  - name: dim_nine_box
+    columns: [{name: nine_box_key, tests: [unique, not_null]}]
+  - name: fact_talent_analytics
+    columns:
+      - {name: talent_key, tests: [unique, not_null]}
+      - name: employee_key
+        tests: [{relationships: {to: ref('dim_employee'), field: employee_key}}]
+      - name: period_key
+        tests: [{relationships: {to: ref('dim_period'), field: period_key}}]
+      - name: nine_box_key
+        tests: [not_null, {relationships: {to: ref('dim_nine_box'), field: nine_box_key}}]
+      - {name: is_top_talent, tests: [not_null]}
+      - {name: is_in_talent_pool, tests: [not_null]}

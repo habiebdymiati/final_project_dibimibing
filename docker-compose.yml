@@ -1,0 +1,327 @@
+# =============================================================================
+# Angkasa Biru Data Harmonization - stack end-to-end
+#
+#   Sumber (API) -> MinIO (raw) -> Postgres DWH (raw/staging/core) -> dbt
+#                -> publish (postgres_fdw) -> Postgres Data Hub (core + marts)
+#   Orkestrasi: Airflow
+#
+# Jalankan:   docker compose up -d --build
+# Tools CLI:  docker compose run --rm runner <perintah>
+# =============================================================================
+name: angkasabiru-datahub
+
+x-pipeline-env: &pipeline-env
+  # Zona waktu seluruh container = waktu perangkat (ubah lewat TZ di .env)
+  TZ: ${TZ:-Asia/Jakarta}
+  # Postgres DWH (warehouse antara: raw -> staging -> intermediate -> core)
+  DWH_HOST: postgres-dwh
+  DWH_PORT: "5432"
+  DWH_DB: ${DWH_DB:-angkasabiru_dwh}
+  DWH_USER: ${DWH_USER:-dwh}
+  DWH_PASSWORD: ${DWH_PASSWORD:-dwh_dev_password}
+  # Postgres Data Hub (target akhir: core + marts)
+  DATAHUB_HOST: postgres-datahub
+  DATAHUB_PORT: "5432"
+  DATAHUB_DB: ${DATAHUB_DB:-angkasabiru_datahub}
+  DATAHUB_USER: ${DATAHUB_USER:-datahub}
+  DATAHUB_PASSWORD: ${DATAHUB_PASSWORD:-datahub_dev_password}
+  # MinIO (arsip raw)
+  MINIO_ENDPOINT: minio:9000
+  MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+  MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin123}
+  MINIO_RAW_BUCKET: ${MINIO_RAW_BUCKET:-angkasabiruretail-raw}
+  # Sumber Angkasa Biru Retail
+  ANGKASABIRURETAIL_SOURCE_MODE: ${ANGKASABIRURETAIL_SOURCE_MODE:-live}
+  ANGKASABIRURETAIL_API_BASE_URL: ${ANGKASABIRURETAIL_API_BASE_URL:-http://mock-angkasabiruretail:8000/api}
+  ANGKASABIRURETAIL_API_KEY: ${ANGKASABIRURETAIL_API_KEY:-}
+  ANGKASABIRURETAIL_SESSION_COOKIE: ${ANGKASABIRURETAIL_SESSION_COOKIE:-}
+  # Sumber Angkasa Biru (Angkasa Biru Airports / SAPATH)
+  ANGKASABIRU_SOURCE_MODE: ${ANGKASABIRU_SOURCE_MODE:-live}
+  ABDESTINATION_SOURCE_MODE: ${ABDESTINATION_SOURCE_MODE:-live}
+  LMS_SOURCE_MODE: ${LMS_SOURCE_MODE:-live}
+  LMS_API_BASE_URL: ${LMS_API_BASE_URL:-http://mock-lms:8000/api}
+  LMS_API_KEY: ${LMS_API_KEY:-}
+  LMS_MINIO_BUCKET: ${LMS_MINIO_BUCKET:-lms-raw}
+  ABDESTINATION_API_BASE_URL: ${ABDESTINATION_API_BASE_URL:-http://mock-abdestination:8000/api/v1}
+  ABDESTINATION_API_TOKEN: ${ABDESTINATION_API_TOKEN:-}
+  ABDESTINATION_MINIO_BUCKET: ${ABDESTINATION_MINIO_BUCKET:-abdestination-raw}
+  ANGKASABIRU_API_BASE_URL: ${ANGKASABIRU_API_BASE_URL:-http://mock-angkasabiru:8000/api/portalhc/v1}
+  ANGKASABIRU_API_USERNAME: ${ANGKASABIRU_API_USERNAME:-}
+  ANGKASABIRU_API_PASSWORD: ${ANGKASABIRU_API_PASSWORD:-}
+
+  # Metabase (visualisasi). Dipakai oleh bi/setup_metabase.py di container runner.
+  METABASE_URL: http://metabase:3000
+  METABASE_ADMIN_EMAIL: ${METABASE_ADMIN_EMAIL:-admin@example.com}
+  METABASE_ADMIN_PASSWORD: ${METABASE_ADMIN_PASSWORD:-}
+  METABASE_RO_USER: ${METABASE_RO_USER:-metabase_ro}
+  METABASE_RO_PASSWORD: ${METABASE_RO_PASSWORD:-}
+  # Alamat Data Hub sebagaimana dilihat dari container Metabase
+  METABASE_DATAHUB_HOST: postgres-datahub
+  # Lokasi proyek di dalam container
+  PROJECT_ROOT: /opt/airflow/project
+  PYTHONPATH: /opt/airflow/project
+  DBT_PROFILES_DIR: /opt/airflow/project/dbt
+  DBT_PROJECT_DIR: /opt/airflow/project/dbt
+  DBT_TARGET_PATH: /tmp/dbt_target
+  DBT_LOG_PATH: /tmp/dbt_logs
+
+x-airflow-common: &airflow-common
+  build:
+    context: .
+    dockerfile: Dockerfile
+  image: angkasabiru-pipeline:latest
+  user: "${AIRFLOW_UID:-50000}:0"
+  environment:
+    <<: *pipeline-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:${AIRFLOW_DB_PASSWORD:-airflow_dev_password}@postgres-airflow/airflow
+    AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY:-}
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+    AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "false"
+    AIRFLOW__WEBSERVER__DEFAULT_UI_TIMEZONE: ${TZ:-Asia/Jakarta}
+    AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW_SECRET_KEY:-change-me-dev-secret}
+  volumes:
+    - ./:/opt/airflow/project
+    - ./airflow/dags:/opt/airflow/dags
+    - airflow-logs:/opt/airflow/logs
+  depends_on: &airflow-depends
+    postgres-airflow:
+      condition: service_healthy
+    postgres-dwh:
+      condition: service_healthy
+    postgres-datahub:
+      condition: service_healthy
+    minio:
+      condition: service_started
+
+services:
+  postgres-dwh:
+    image: postgres:16-alpine
+    container_name: angkasabiru-postgres-dwh
+    command: ["postgres", "-c", "timezone=${TZ:-Asia/Jakarta}", "-c", "log_timezone=${TZ:-Asia/Jakarta}"]
+    environment:
+      TZ: ${TZ:-Asia/Jakarta}
+      POSTGRES_DB: ${DWH_DB:-angkasabiru_dwh}
+      POSTGRES_USER: ${DWH_USER:-dwh}
+      POSTGRES_PASSWORD: ${DWH_PASSWORD:-dwh_dev_password}
+    ports:
+      - "${DWH_HOST_PORT:-5433}:5432"
+    volumes:
+      - pg-dwh:/var/lib/postgresql/data
+      - ./db/dwh/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  postgres-datahub:
+    image: postgres:16-alpine
+    container_name: angkasabiru-postgres-datahub
+    command: ["postgres", "-c", "timezone=${TZ:-Asia/Jakarta}", "-c", "log_timezone=${TZ:-Asia/Jakarta}"]
+    environment:
+      TZ: ${TZ:-Asia/Jakarta}
+      POSTGRES_DB: ${DATAHUB_DB:-angkasabiru_datahub}
+      POSTGRES_USER: ${DATAHUB_USER:-datahub}
+      POSTGRES_PASSWORD: ${DATAHUB_PASSWORD:-datahub_dev_password}
+    ports:
+      - "${DATAHUB_HOST_PORT:-5434}:5432"
+    volumes:
+      - pg-datahub:/var/lib/postgresql/data
+      - ./db/datahub/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  postgres-airflow:
+    image: postgres:16-alpine
+    container_name: angkasabiru-postgres-airflow
+    environment:
+      TZ: ${TZ:-Asia/Jakarta}
+      POSTGRES_DB: airflow
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: ${AIRFLOW_DB_PASSWORD:-airflow_dev_password}
+    volumes:
+      - pg-airflow:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow -d airflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Image Chainguard dipakai karena minio/minio (Docker Hub) tidak lagi tersedia.
+  # Bisa diganti ke quay.io/minio/minio:latest bila registry itu dapat diakses.
+  minio:
+    image: ${MINIO_IMAGE:-cgr.dev/chainguard/minio:latest}
+    container_name: angkasabiru-minio
+    user: root
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      TZ: ${TZ:-Asia/Jakarta}
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin123}
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio-data:/data
+
+  # --- Visualisasi: Metabase membaca Data Hub (marts + meta) lewat role read-only ---
+  postgres-metabase:
+    image: postgres:16-alpine
+    container_name: angkasabiru-postgres-metabase
+    environment:
+      TZ: ${TZ:-Asia/Jakarta}
+      POSTGRES_DB: metabase
+      POSTGRES_USER: metabase
+      POSTGRES_PASSWORD: ${METABASE_DB_PASSWORD:-metabase_dev_password}
+    volumes:
+      - pg-metabase:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U metabase -d metabase"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  metabase:
+    image: ${METABASE_IMAGE:-metabase/metabase:v0.50.26}
+    container_name: angkasabiru-metabase
+    environment:
+      TZ: ${TZ:-Asia/Jakarta}
+      MB_DB_TYPE: postgres
+      MB_DB_HOST: postgres-metabase
+      MB_DB_PORT: "5432"
+      MB_DB_DBNAME: metabase
+      MB_DB_USER: metabase
+      MB_DB_PASS: ${METABASE_DB_PASSWORD:-metabase_dev_password}
+      MB_ANON_TRACKING_ENABLED: "false"
+      JAVA_TIMEZONE: Asia/Jakarta
+      JAVA_OPTS: -Xmx1g
+    ports:
+      - "${METABASE_PORT:-3000}:3000"
+    depends_on:
+      postgres-metabase:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail -s http://localhost:3000/api/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 60s
+
+  airflow-init:
+    <<: *airflow-common
+    container_name: angkasabiru-airflow-init
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        set -e
+        airflow db migrate
+        # hanya kegagalan "user sudah ada" yang boleh diabaikan; error lain harus menghentikan init
+        if ! airflow users list | grep -qw "$${AIRFLOW_ADMIN_USER:-admin}"; then
+          airflow users create --username "$${AIRFLOW_ADMIN_USER:-admin}" \
+            --password "$${AIRFLOW_ADMIN_PASSWORD:-admin}" \
+            --firstname Admin --lastname User --role Admin --email admin@example.com
+        fi
+    environment:
+      <<: [*pipeline-env]
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:${AIRFLOW_DB_PASSWORD:-airflow_dev_password}@postgres-airflow/airflow
+      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY:-}
+      AIRFLOW_ADMIN_USER: ${AIRFLOW_ADMIN_USER:-admin}
+      AIRFLOW_ADMIN_PASSWORD: ${AIRFLOW_ADMIN_PASSWORD:-admin}
+
+  airflow-webserver:
+    <<: *airflow-common
+    container_name: angkasabiru-airflow-web
+    command: webserver
+    ports:
+      - "${AIRFLOW_PORT:-8080}:8080"
+    depends_on:
+      <<: *airflow-depends
+      airflow-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+
+  airflow-scheduler:
+    <<: *airflow-common
+    container_name: angkasabiru-airflow-scheduler
+    command: scheduler
+    depends_on:
+      <<: *airflow-depends
+      airflow-init:
+        condition: service_completed_successfully
+
+  # Tools CLI (ingestion, dbt, publish, pytest) memakai image yang sama.
+  #   docker compose run --rm runner python -m ingestion.run_ingest --source angkasabiruretail
+  #   docker compose run --rm runner dbt-dwh build
+  runner:
+    <<: *airflow-common
+    profiles: ["tools"]
+    entrypoint: []
+    command: ["bash"]
+    working_dir: /opt/airflow/project
+
+  # Instance API tiruan (mock): sejak 15 November 2026 menjadi sumber data pipeline.
+  # Data SINTETIS penuh, dibangkitkan deterministik oleh mock_api/bangun_data.py
+  # (tidak ada data pegawai sungguhan).
+  mock-angkasabiru:
+    build: mock_api
+    container_name: angkasabiru-mock-angkasabiru
+    environment:
+      MOCK_SOURCE: angkasabiru
+      API_PREFIX: /api/portalhc/v1
+      MOCK_USERNAME: ${ANGKASABIRU_API_USERNAME:-}
+      MOCK_PASSWORD: ${ANGKASABIRU_API_PASSWORD:-}
+      TZ: ${TZ:-Asia/Jakarta}
+    ports:
+      - "${MOCK_ANGKASABIRU_PORT:-8101}:8000"
+
+  mock-abdestination:
+    build: mock_api
+    container_name: angkasabiru-mock-abdestination
+    environment:
+      MOCK_SOURCE: abdestination
+      API_PREFIX: /api/v1
+      MOCK_API_TOKEN: ${ABDESTINATION_API_TOKEN:-}
+      TZ: ${TZ:-Asia/Jakarta}
+    ports:
+      - "${MOCK_ABDESTINATION_PORT:-8103}:8000"
+
+  mock-lms:
+    build: mock_api
+    container_name: angkasabiru-mock-lms
+    environment:
+      MOCK_SOURCE: lms
+      API_PREFIX: /api
+      MOCK_API_KEY: ${LMS_API_KEY:-}
+      TZ: ${TZ:-Asia/Jakarta}
+    ports:
+      - "${MOCK_LMS_PORT:-8104}:8000"
+
+  mock-angkasabiruretail:
+    build: mock_api
+    container_name: angkasabiru-mock-angkasabiruretail
+    environment:
+      MOCK_SOURCE: angkasabiruretail
+      API_PREFIX: /api
+      MOCK_API_KEY: ${ANGKASABIRURETAIL_API_KEY:-}
+      TZ: ${TZ:-Asia/Jakarta}
+    ports:
+      - "${MOCK_ANGKASABIRURETAIL_PORT:-8102}:8000"
+
+volumes:
+  pg-dwh:
+  pg-datahub:
+  pg-airflow:
+  pg-metabase:
+  minio-data:
+  airflow-logs:

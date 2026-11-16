@@ -1,0 +1,31 @@
+# =============================================================================
+# Definisi sumber: Angkasa Biru LMS (sistem pembelajaran grup)
+# Katalog BRD 4.4: learning_agility_assessment bersumber dari LMS, bukan HRIS per perusahaan.
+# Satu endpoint lintas perusahaan; tiap baris membawa company_code (AB/ABR/ABD) dan id pegawai
+# pada sistem perusahaan masing-masing. Transformasinya tetap per perusahaan di silver_<sumber>.
+# =============================================================================
+source: lms
+type: rest_api
+schedule: "@daily"
+
+mode: "${LMS_SOURCE_MODE:-live}"
+sample_dir: data/sample/lms
+
+api:
+  base_url: "${LMS_API_BASE_URL:-http://mock-lms:8000/api}"
+  timeout_seconds: 60
+  retries: 3
+  retry_backoff_seconds: 5
+  default_auth_header: x-api-key
+  api_key: "${LMS_API_KEY:-}"
+
+raw:
+  schema: raw_lms
+  minio_bucket: "${LMS_MINIO_BUCKET:-lms-raw}"
+  keep_batches: 7
+
+dbt:
+  select: "+tag:lms+"
+
+endpoints:
+  - {name: "learning_agility_assessments", path: "/assessments"}

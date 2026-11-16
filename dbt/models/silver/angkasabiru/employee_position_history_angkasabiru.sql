@@ -1,0 +1,2 @@
+{# silver.employee_position_history_angkasabiru: data employee_position_history milik Angkasa Biru (aturan pemetaan di stg_employee_position_history_angkasabiru). #}
+select *, current_timestamp as dwh_loaded_at from {{ ref('stg_employee_position_history_angkasabiru') }}

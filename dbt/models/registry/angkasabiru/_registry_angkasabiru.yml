@@ -1,0 +1,8 @@
+version: 2
+models:
+  - name: registry_id_employee_angkasabiru
+    description: "Registri kunci pegawai buatan DWH: satu baris per (sumber, NIP); id_employee tidak pernah berubah."
+    columns:
+      - {name: id_employee, tests: [unique, not_null]}
+      - {name: urutan, tests: [unique, not_null]}
+      - {name: nip, tests: [not_null]}

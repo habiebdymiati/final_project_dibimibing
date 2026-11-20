@@ -294,7 +294,7 @@ dan tambahkan blok `dbt:` di YAML sumber; (4) untuk gold: daftarkan di `vars.gol
 
 ## 7. Pengujian dan saat ada masalah
 
-`make test` menjalankan ±325 pemeriksaan pytest terhadap data terpasang (butuh stack hidup). dbt juga
+`make test` menjalankan ±340 pemeriksaan pytest terhadap data terpasang (butuh stack hidup). dbt juga
 menguji dirinya saat `transform_silver`/`build_gold`: uji kunci (`unique`, `not_null`) menggagalkan run,
 uji relasi/nilai berstatus WARN. Dengan data sintetis yang konsisten penuh, kondisi normalnya 0 WARN
 (saat memakai API asli dulu ada 4-5 WARN bawaan kualitas sumber).

@@ -3,7 +3,7 @@ flowchart TB
         RT["<b>raw_table_#lt;sumber#gt;.*</b><br/>semua endpoint, kolom teks"]:::raw
         TMT["<b>reference: tmt_karyawan</b><br/>Angkasa Biru, urutan id_employee"]:::pendukung
         NOM["<b>reference: nominatif</b><br/>Angkasa Biru, cadangan saat API kosong"]:::pendukung
-        MD["<b>reference: master_data</b><br/>kedua perusahaan, kolom Top Talent"]:::pendukung
+        MD["<b>reference: master_data</b><br/>ketiga perusahaan, kolom Top Talent"]:::pendukung
         SEED["<b>seed_#lt;sumber#gt;</b><br/>ref_band, ref_company,<br/>ref_performance_rating, map_nilai"]:::pendukung
     end
 
@@ -12,17 +12,19 @@ flowchart TB
         REG["<b>registry_id_employee</b><br/>incremental: hanya menambah NIP baru"]:::pendukung
         INOM["<b>int_nominatif</b> (Angkasa Biru)<br/>kode dipetakan ke nama, posisi dicocokkan"]:::silver
         POS["<b>int_posisi_terkini</b> (Angkasa Biru)<br/>posisi terakhir dan asal nilainya:<br/>sumber_area, sumber_directorate, sumber_org_group"]:::silver
-        STG["<b>stg_#lt;entitas#gt;_#lt;sumber#gt;</b> (20 view)<br/>ap(), snh(): kolom tidak ada di raw menjadi NULL, bukan error<br/>ke_tanggal(), baku(): format dan nilai baku"]:::silver
-        SIL["<b>#lt;entitas#gt;_#lt;sumber#gt;</b> (20 tabel di silver_#lt;sumber#gt;)<br/>Tes unique, not_null gagal: run berhenti<br/>Tes relationships, accepted_values gagal: hanya WARN"]:::silver
+        STG["<b>stg_#lt;entitas#gt;_#lt;sumber#gt;</b> (24 view)<br/>ab(), abr(), abd(), lms(): kolom tidak ada di raw menjadi NULL, bukan error<br/>ke_tanggal(), baku(): format dan nilai baku"]:::silver
+        SIL["<b>#lt;entitas#gt;_#lt;sumber#gt;</b> (24 tabel di silver_#lt;sumber#gt;)<br/>Tes unique, not_null gagal: run berhenti<br/>Tes relationships, accepted_values gagal: hanya WARN"]:::silver
     end
 
     FDW["<b>python -m ingestion.fdw_silver</b><br/>fdw_silver_#lt;sumber#gt;: foreign table cermin silver, dibuat ulang tiap run"]:::kerja
 
     subgraph TARGETHUB["dbt build --target datahub (task build_gold)"]
         IP["<b>int_posisi_pegawai</b><br/>posisi dan job family per pegawai"]:::silver
-        IM["<b>int_employee_metrics</b><br/>metrik per pegawai untuk kedua fact"]:::silver
-        DIM["<b>dim_*</b><br/>company, band, org_unit, position_master,<br/>position_variant, employee, contract_type, date"]:::gold
+        IM["<b>int_employee_metrics</b><br/>metrik per pegawai untuk fact snapshot dan talent"]:::silver
+        DIM["<b>dim_*</b><br/>company, band, org_unit, position_master,<br/>position_variant, employee, contract_type,<br/>date, period, nine_box"]:::gold
         F1["<b>fact_employee_snapshot</b><br/>per pegawai aktif per tanggal:<br/>masa kerja, kinerja, kontrak, disiplin, top talent"]:::gold
+        F2["<b>fact_talent_analytics</b><br/>per pegawai aktif per semester:<br/>EQS + komponen, kotak 9-Box"]:::gold
+        F3["<b>fact_talent_mobility</b><br/>pegawai diperbantukan antar perusahaan:<br/>asal #8594; sekarang, tanggal pindah"]:::gold
     end
 
     RT --> NIP
@@ -47,6 +49,8 @@ flowchart TB
     IP --> DIM
     DIM --> IM
     IM --> F1
+    IM --> F2
+    FDW --> F3
 
     classDef raw fill:#f8e6d6,stroke:#b5763a,color:#3d2610;
     classDef pendukung fill:#f1f0ec,stroke:#8a8984,color:#26251f;

@@ -1,6 +1,6 @@
 """Layer gold (Data Hub): star schema gabungan semua perusahaan, sesuai katalog BRD bagian 6.2
-(2 fact + 10 dimensi; EQS dan 9-Box dihidupkan lagi 15 November 2026 setelah sumber datanya
-dilengkapi instance API tiruan)."""
+(3 fact + 10 dimensi; EQS dan 9-Box dihidupkan lagi 15 November 2026 setelah sumber datanya
+dilengkapi instance API tiruan; fact_talent_mobility ditambah 20 November 2026)."""
 import pytest
 
 from .conftest import query, scalar

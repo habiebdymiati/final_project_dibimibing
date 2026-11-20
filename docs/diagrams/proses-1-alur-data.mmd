@@ -16,13 +16,13 @@ flowchart TB
         SEED["<b>seed_#lt;sumber#gt;</b><br/>band, perusahaan, rating,<br/>pemetaan nilai baku"]:::pendukung
         REG["<b>registry_#lt;sumber#gt;</b><br/>id_employee tetap,<br/>tidak pernah dinomori ulang"]:::pendukung
         STG["<b>staging_#lt;sumber#gt;</b> (view)<br/>aturan pemetaan: stg_*, int_*"]:::silver
-        SIL["<b>silver_#lt;sumber#gt;</b> (tabel)<br/>20 tabel per perusahaan, sudah diharmonisasi"]:::silver
+        SIL["<b>silver_#lt;sumber#gt;</b> (tabel)<br/>24 tabel per perusahaan, sudah diharmonisasi"]:::silver
     end
 
     subgraph HUB["POSTGRES DATA HUB (angkasabiru_datahub, port 5434)"]
         FDW["<b>fdw_silver_#lt;sumber#gt;</b> (foreign table)<br/>cermin silver, tanpa salinan data"]:::silver
         ANT["<b>seed_gold</b> dan <b>staging_gold</b><br/>rujukan dan tabel antara"]:::pendukung
-        GOLD["<b>gold</b> (tabel)<br/>8 dim_* dan 1 fact_*, gabungan semua perusahaan"]:::gold
+        GOLD["<b>gold</b> (tabel)<br/>10 dim_* dan 3 fact_*, gabungan semua perusahaan"]:::gold
     end
 
     MB["<b>Metabase</b> (bi/ lokal, tidak masuk git)<br/>2 dashboard, role read-only, hanya baca schema gold"]:::lokal

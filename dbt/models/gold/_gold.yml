@@ -1,6 +1,6 @@
 version: 2
 
-# Star schema gold (katalog BRD 6.2): 2 fact + 10 dimensi, gabungan semua perusahaan. Baris UNKNOWN pada dimensi menjamin setiap
+# Star schema gold (katalog BRD 6.2): 3 fact + 10 dimensi, gabungan semua perusahaan. Baris UNKNOWN pada dimensi menjamin setiap
 # foreign key fact punya pasangan, jadi uji relasinya menggagalkan run bila ada yang lepas.
 models:
   - name: int_employee_metrics

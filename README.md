@@ -15,6 +15,11 @@ yang dibaca dashboard Metabase. Seluruhnya berjalan di Docker dan diorkestrasi A
 
 ## 1. Gambaran sistem
 
+### Tech stack
+
+![Tech stack: empat mock API FastAPI → konektor Python → MinIO → PostgreSQL DWH + dbt → PostgreSQL Data Hub (gold) → Metabase, diorkestrasi Airflow di Docker Compose](docs/img/architecture.svg)
+
+
 ![Alur data dari API ke MinIO, Postgres DWH, Postgres Data Hub, sampai Metabase](docs/img/proses-1-alur-data.png)
 
 Label pada panah adalah nama task Airflow yang mengerjakannya. Kotak bergaris putus-putus tidak masuk git.
@@ -50,17 +55,21 @@ Airflow dan Metabase tidak dibuka ke host.
 | `staging_<sumber>` | DWH | `transform_silver` | View dbt berisi aturan pemetaan (`stg_*`, `int_*`); tidak menyimpan data |
 | `silver_<sumber>` | DWH | `transform_silver` | 24 tabel per perusahaan (23 entitas katalog BRD + top_talent), sudah diharmonisasi; nama schema dan tabel berakhiran pemilik datanya |
 | `fdw_silver_<sumber>` | Data Hub | `build_gold` | Foreign table cermin silver (tanpa salinan); dibuat ulang tiap run oleh `ingestion/fdw_silver.py` |
-| `gold` | Data Hub | `build_gold` | Star schema gabungan semua perusahaan: 2 fact + 10 dimensi (katalog BRD 6.2); kunci diawali kode sumber (`AB-`, `ABR-`); baris `UNKNOWN` menjamin relasi fact selalu berpasangan |
+| `gold` | Data Hub | `build_gold` | Star schema gabungan semua perusahaan: 3 fact + 10 dimensi (katalog BRD 6.2); kunci diawali kode sumber (`AB-`, `ABR-`); baris `UNKNOWN` menjamin relasi fact selalu berpasangan |
 
 ## 2. Menjalankan
 
-Prasyarat: Docker + Docker Compose. Berkas referensi di `data/` (lihat bagian 6) harus tersedia agar
-`transform_silver` berjalan.
+Prasyarat: Docker + Docker Compose. Nilai bawaan `.env.example` sudah berfungsi (semua sumber adalah
+API mock sintetis), dan berkas referensi `data/` (lihat bagian 6) dibangkitkan otomatis oleh `make up`
+bila belum ada — clone baru bisa langsung jalan tanpa menyiapkan apa pun.
 
 ```bash
-cp .env.example .env            # isi kredensial
-make up                         # db, MinIO, Airflow (juga membangun ulang image bila perlu)
-make pipeline SOURCE=angkasabiruretail    # extract + load + flatten satu sumber (angkasabiruretail | angkasabiru)
+cp .env.example .env            # nilai bawaan langsung jalan; ganti bila perlu
+make up                         # db, MinIO, Airflow, mock API (+ bangkitkan data referensi sintetis)
+make pipeline SOURCE=angkasabiru          # extract + load + flatten satu sumber
+make pipeline SOURCE=angkasabiruretail    # (sumber: angkasabiru | angkasabiruretail | abdestination | lms)
+make pipeline SOURCE=abdestination
+make pipeline SOURCE=lms
 make silver && make gold        # transformasi silver, lalu star schema gold
 make test                       # pytest (butuh stack hidup dan data raw)
 ```
@@ -208,11 +217,12 @@ master data — `Ya` = true; `Tidak`, kosong, atau tidak terdaftar = false. Buka
 
 ### 4.3 Layer gold
 
-Star schema gabungan di Data Hub, sesuai katalog BRD 6.2: **2 fact + 10 dimensi** (`fact_employee_snapshot`,
-`fact_talent_analytics`; `dim_employee`, `dim_position_master`, `dim_position_variant`, `dim_band`,
+Star schema gabungan di Data Hub, sesuai katalog BRD 6.2: **3 fact + 10 dimensi** (`fact_employee_snapshot`,
+`fact_talent_analytics`, `fact_talent_mobility` — pegawai diperbantukan antar perusahaan grup;
+`dim_employee`, `dim_position_master`, `dim_position_variant`, `dim_band`,
 `dim_org_unit`, `dim_company`, `dim_contract_type`, `dim_date`, `dim_period`, `dim_nine_box`).
 
-![ERD gold: 2 fact dan 10 dimensi](docs/img/erd-gold.png)
+![ERD gold: 3 fact dan 10 dimensi](docs/img/erd-gold.png)
 
 - **Gold tidak dipisah per perusahaan**: fact membawa `company_key`; kunci unit/posisi diawali `AB-`/`ABR-`.
 - **Varian bawaan** (`is_default_variant`): master posisi Angkasa Biru Retail tanpa varian dibuatkan satu varian, karena
@@ -241,7 +251,7 @@ dan tiga dashboard di koleksi *Angkasa Biru Data Hub*. Kartu yang dihapus dari `
 |---|---|
 | Gold · Tenaga Kerja | Profil pegawai aktif: jenjang, top talent, umur, masa kerja, kontrak, sebaran organisasi, kelengkapan data per perusahaan |
 | Gold · Organisasi & Posisi | Unit organisasi per level, posisi master/varian, unit dengan pegawai terbanyak |
-| Gold · Talenta | Analitik `fact_talent_analytics` periode berjalan: EQS (rata-rata, distribusi, per band, top talent vs lainnya), rata-rata komponen EQS, kisi 9-Box beserta komposisi klaster per perusahaan |
+| Gold · Talenta | Analitik `fact_talent_analytics` periode berjalan: EQS (rata-rata, distribusi, per band, top talent vs lainnya), rata-rata komponen EQS, kisi 9-Box beserta komposisi klaster per perusahaan; Talent Mobility (`fact_talent_mobility`): jumlah, rute asal → sekarang, rekap masuk/keluar per perusahaan |
 
 Keduanya punya filter Perusahaan dan membaca snapshot terakhir. Perbandingan antarperusahaan memakai persen
 (ukurannya berbeda jauh). Seluruh nama pegawai di `gold.dim_employee` adalah data sintetis, bukan orang
@@ -265,13 +275,13 @@ diperlukan untuk menjalankan, menguji, dan menjelaskannya:
 | `docs/` | Diagram proses (Mermaid + PNG) yang dipakai README ini; cara render ulang di `docs/diagrams/README.md` |
 | Akar | `Dockerfile` (image tunggal Airflow+dbt+pytest), `docker-compose.yml`, `Makefile`, `requirements*.txt`, `pytest.ini`, `.env.example` |
 
-**Hanya lokal** (di `.gitignore`) — di komputer baru harus disalin sendiri:
+**Hanya lokal** (di `.gitignore`) — di komputer baru dibuat ulang otomatis atau disalin sendiri:
 
 | Item | Isi | Bila tidak ada |
 |---|---|---|
-| `.env` | Kredensial API, database, MinIO, port | Koneksi dan penarikan API gagal |
-| `data/refrence/*.csv` | Mapping field + CSV referensi **sintetis** (TMT, nominatif, master data) — buat ulang: `python mock_api/bangun_data.py --referensi data/refrence` | `transform_silver` gagal `FileNotFoundError` |
-| `data/sample/` | Fixture mode offline, **sintetis** — buat ulang: `python mock_api/bangun_data.py --sample data/sample` | Mode `live` (mock) tidak terpengaruh |
+| `.env` | Kredensial API, database, MinIO, port — `cp .env.example .env` sudah cukup (nilai bawaan berfungsi untuk stack mock) | Koneksi dan penarikan API gagal |
+| `data/refrence/*.csv` | CSV referensi **sintetis** (TMT, nominatif, master data) — dibangkitkan otomatis oleh `make up` bila belum ada, atau manual: `make data` | `transform_silver` gagal `FileNotFoundError` (lalu dibangkitkan otomatis saat `make silver`) |
+| `data/sample/` | Fixture mode offline, **sintetis** — ikut dibangkitkan `make data` | Mode `live` (mock) tidak terpengaruh |
 | `bi/`, `tests/test_metabase.py` | Definisi dan penyediaan dashboard | Dashboard yang ada tetap jalan, tak bisa dibuat ulang |
 | `scripts/catalogue/`, `scripts/*.py` lain | Pembangkit dokumen katalog dan data contoh | Pipeline tetap jalan |
 | `data_catalogue/`, `brd/`, `deliverable/`, `arsip/` | Dokumen, katalog, arsip (berisi contoh nilai asli) | Pipeline tetap jalan |
@@ -328,6 +338,7 @@ berjalan (antrean `flock` tidak lintas container); mencocokkan `id_employee` den
 | 09 Nov 2026 | EQS, 9-Box (`fact_talent_analytics`, `dim_nine_box`, `dim_period`), dan transformasi `learning_history` dihapus sampai sumber datanya tersedia; `is_top_talent` pindah ke `fact_employee_snapshot` |
 | 15 Nov 2026 | **Sumber data dirombak ke instance API tiruan** (`mock_api/`, dua layanan Docker) dengan acuan pemrosesan katalog BRD: data yang tidak pernah dikirim API asli dilengkapi (rating kinerja AP, competency assessment, learning agility, learnings/cuti Angkasa Biru Retail). Silver menjadi 24 tabel per sumber (+learning_history, learning_agility_assessment, competency_assessment, employee_secondary_assignment); gold kembali 2 fact + 10 dimensi: EQS dan 9-Box dihitung lagi, komponen aspirasi masih menunggu Rinjani |
 | 16 Nov 2026 | Slug sumber ketiga diseragamkan ke bahasa Inggris: `abdestinasi` → **`abdestination`** (tabel, schema, env `ABDESTINATION_*`, service `mock-abdestination`, DAG `pipeline_abdestination`) |
+| 20 Nov 2026 | **Talent Mobility**: 12 pegawai sintetis PKWTT diperbantukan antar perusahaan (identitas sama di dua perusahaan; non-aktif di asal dengan riwayat posisi ditutup pada tanggal pindah, aktif di tujuan dengan `employment_type` 'Talent Mobility'), sehingga di gold tiap orang terhitung sekali di perusahaan terakhir. Fact ketiga `fact_talent_mobility` (asal → sekarang) + 3 kartu dashboard Talenta; uji urutan TMT registry menjadi per batch penambahan (registry incremental, ID stabil) |
 | 16 Nov 2026 | PT Angkasa Biru ditetapkan sebagai **Holding** (ABR dan ABD tetap Member); seed, mock, dan katalog diperbarui |
 | 16 Nov 2026 | Dashboard ketiga **Gold · Talenta** (11 kartu): EQS, komponen, distribusi, kisi 9-Box sesuai kisi acuan, komposisi klaster, EQS per band, top talent vs lainnya |
 | 16 Nov 2026 | **Sumber keempat: Angkasa Biru LMS** (`lms`, sistem grup — bukan perusahaan): learning agility dipindah dari mock HRIS per perusahaan ke instance mock LMS terpisah sesuai katalog BRD 4.4; satu endpoint `assessments` lintas perusahaan (`company_code` AB/ABR/ABD), auth `x-api-key`, DAG `pipeline_lms`; staging ketiga perusahaan membaca `raw_lms` sehingga silver/gold tidak berubah bentuk |

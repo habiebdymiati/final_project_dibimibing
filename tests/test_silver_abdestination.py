@@ -32,7 +32,8 @@ def test_id_employee_varchar_awalan_30_diikuti_6_digit(dwh):
     assert scalar(dwh, f"select count(*) from {S}.employee_profile_abdestination "
                        "where id_employee is null or id_employee !~ '^30[0-9]{6}$'") == 0
     assert scalar(dwh, "select bool_and(id_employee = (30000000 + urutan)::varchar) from registry_abdestination.registry_id_employee_abdestination")
-    assert scalar(dwh, """select count(*) from (select dt_tmt, lag(dt_tmt) over (order by urutan) as sebelum
+    # urutan TMT dijamin di dalam tiap batch penambahan (registry incremental, ID stabil)
+    assert scalar(dwh, """select count(*) from (select dt_tmt, lag(dt_tmt) over (partition by dwh_assigned_at order by urutan) as sebelum
                                                from registry_abdestination.registry_id_employee_abdestination) t where dt_tmt < sebelum""") == 0
 
 

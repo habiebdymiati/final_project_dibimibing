@@ -123,6 +123,35 @@ def _agility(nik):
     return baris
 
 
+# --------------------------------------------------------------------- Talent Mobility (20 Nov 2026)
+# Sebagian kecil pegawai PKWTT diperbantukan antar perusahaan grup. Orangnya SAMA di dua perusahaan
+# (nama, tanggal lahir, jenis kelamin, KTP, NPWP): di perusahaan ASAL berstatus diperbantukan
+# (non-aktif; tinggal record history, riwayat posisinya ditutup pada tanggal pindah), di perusahaan
+# TUJUAN aktif dengan employment_type 'Talent Mobility' dan kontrak PKWTT. Karena gold menyaring
+# employment_status = 'aktif', nama mereka hanya muncul sekali di gold: di perusahaan terakhir.
+MOBILITAS = [("AB", "ABR", 3), ("AB", "ABD", 3), ("ABR", "ABD", 2),
+             ("ABR", "AB", 2), ("ABD", "AB", 1), ("ABD", "ABR", 1)]
+
+
+def _daftar_mobilitas():
+    """Daftar deterministik orang Talent Mobility; dipanggil ketiga builder dengan hasil identik."""
+    orang, k = [], 0
+    for asal, tujuan, n in MOBILITAS:
+        for _ in range(n):
+            r = _rng("mobilitas", k)
+            # lahir 1975-1995: belum melewati usia pensiun termuda (56) di perusahaan mana pun
+            lahir = _tanggal(r, date(1975, 1, 1), date(1995, 12, 28))
+            tmt_asal = _tanggal(r, date(max(2005, lahir.year + 18), 1, 1), date(2020, 12, 28))
+            tmt_pindah = _tanggal(r, date(2024, 1, 1), date(2026, 6, 30))
+            orang.append({"k": k, "asal": asal, "tujuan": tujuan, "nama": _nama(r),
+                          "gender": r.choice(["L", "P"]), "lahir": lahir, "kota": r.choice(KOTA),
+                          "id_nik": _digit(r, 16),
+                          "id_npwp": f"{_digit(r, 2)}.{_digit(r, 3)}.{_digit(r, 3)}.{_digit(r, 1)}-{_digit(r, 3)}.{_digit(r, 3)}",
+                          "tmt_asal": tmt_asal, "tmt_pindah": tmt_pindah})
+            k += 1
+    return orang
+
+
 # ===================================================================== Angkasa Biru
 JUMLAH_AP = 7500
 
@@ -397,6 +426,43 @@ def bangun_angkasabiru() -> dict:
                                   "unit": v_unit["org_unit_name"] if v_unit else None,
                                   "area": baris_akhir["position_name"].split()[-1],
                                   "direktorat": r.choice(DIREKTORAT_AP)[0]})
+
+    # Talent Mobility: AB sebagai perusahaan asal (diperbantukan keluar) atau tujuan (diperbantukan masuk)
+    for o in _daftar_mobilitas():
+        if "AB" not in (o["asal"], o["tujuan"]):
+            continue
+        asal = o["asal"] == "AB"
+        r = _rng("ap-mob", o["k"])
+        tmt = o["tmt_asal"] if asal else o["tmt_pindah"]
+        nik = f"{tmt.year}{7500 + o['k']:04d}"
+        nama = o["nama"]
+        email = _email(nama, "angkasabiru.id", r)
+        profil.append({"new_nip": nik, "old_nip": _digit(r, 7), "full_name": nama,
+                       "name_alias": nama.split()[0], "academic_title": r.choice(GELAR),
+                       "corporate_email": email,
+                       "employee_status": "Diperbantukan" if asal else "Aktif"})
+        identifikasi.append({"id_employee": nik, "id_nik": o["id_nik"], "id_npwp": o["id_npwp"],
+                             "birth_place": o["kota"], "blood_type": r.choice(["A", "B", "AB", "O"]),
+                             "gender": "Laki-Laki" if o["gender"] == "L" else "Perempuan",
+                             "ethnicity": None, "corporate_email": email,
+                             "dt_start_work": tmt.isoformat(), "dt_appointed_employee": tmt.isoformat(),
+                             "dt_grade_start": tmt.isoformat(),
+                             "dt_retirement": _pensiun(o["lahir"], 58).isoformat(),
+                             "employment_type": "KP" if asal else "TMB",
+                             "home_phone": _ponsel(r),
+                             "id_bpjs_kes": _digit(r, 13), "id_bpjs_tk": _digit(r, 11)})
+        alamat.append({"nik_new": nik, "Alamat": f"Jl. {r.choice(BELAKANG)} No. {r.randrange(1, 200)}, {o['kota']}",
+                       "address_type": "Alamat Tetap", "city": o["kota"], "district": None,
+                       "province": PROVINSI[o["kota"]], "postal_code": _digit(r, 5)})
+        v = varian[r.randrange(len(varian))]
+        riwayat_posisi.append({"id_position_history": str(len(riwayat_posisi) + 1), "new_nip": nik,
+                               "employee_name": nama, "fk_position_variant_id": v["id_position_variant"],
+                               "position_name": v["position_variant_name"], "position_type": None,
+                               "job_class": v["job_class"], "org_unit_name": None,
+                               "company_name": "AB", "dt_position_start": tmt.isoformat(),
+                               "dt_position_end": o["tmt_pindah"].isoformat() if asal else None})
+        tmt_csv.append({"new_nip": nik, "tanggal_lahir": o["lahir"].isoformat(), "tmt_karyawan": tmt.isoformat()})
+        master_csv.append({"Kode Perusahaan": "AB", "NIK": nik, "Top Talent": "Tidak"})
 
     data["employee_profile"] = profil
     data["employee_identification"] = identifikasi
@@ -722,6 +788,72 @@ def bangun_angkasabiruretail() -> dict:
                            "id_approver": None, "created_at": None, "updated_at": None})
         master_csv.append({"Kode Perusahaan": "ABR", "NIK": str(int(nip)),
                            "Top Talent": "Ya" if _rng("snh-tt", nip).random() < 0.035 else "Tidak"})
+
+    # Talent Mobility: ABR sebagai perusahaan asal (seconded keluar) atau tujuan (diperbantukan masuk)
+    for o in _daftar_mobilitas():
+        if "ABR" not in (o["asal"], o["tujuan"]):
+            continue
+        asal = o["asal"] == "ABR"
+        r = _rng("snh-mob", o["k"])
+        tmt = o["tmt_asal"] if asal else o["tmt_pindah"]
+        nip = f"9{o['k']:06d}"
+        id_sistem = f"EMP-{9000 + o['k']:04d}"
+        nama = o["nama"]
+        email = _email(nama, "angkasabiruretail.id", r)
+        area = AREA_SNH[o["k"] % 6]
+        jc = r.choice(["9", "10", "11", "12", "13"])
+        status = "Seconded" if asal else "Active"
+        roster.append({"code_member": nip, "personel_number": nama, "email": email,
+                       "status_aktif": status, "photo_blob": None, "person_grade": jc,
+                       "personnel_area_text": area[0], "area_nomenklatur": area[1],
+                       "name_directorate": DIREKTORAT_SNH[o["k"] % 5], "name_group": f"Group {BIDANG[o['k'] % len(BIDANG)]}",
+                       "band_name": None, "code_directorate": f"D{(o['k'] % 5) + 1}", "code_division": None,
+                       "code_group": f"G{(o['k'] % 20) + 1:02d}", "code_subholding": "ABR",
+                       "birthplace": o["kota"], "date_of_birth": o["lahir"].isoformat(),
+                       "division": None, "education_level": None,
+                       "gender_text": "Male" if o["gender"] == "L" else "Female",
+                       "home_address": f"Jl. {r.choice(BELAKANG)} No. {r.randrange(1, 150)}"})
+        profil.append({"id_employee": id_sistem, "old_nip": nip, "new_nip": _digit(r, 8),
+                       "full_name": nama, "name_alias": nama.split()[0],
+                       "academic_title": r.choice(GELAR), "corporate_email": email,
+                       "employment_status": status, "photo_blob": None, "leave_type": None,
+                       "created_at": None, "updated_at": None})
+        rinci.append({"id_employee": id_sistem, "employee_name": nama, "id_nik": o["id_nik"],
+                      "id_npwp": o["id_npwp"], "birth_place": o["kota"], "dt_birth": o["lahir"].isoformat(),
+                      "dt_start_work": tmt.isoformat(), "dt_retirement": _pensiun(o["lahir"], 56).isoformat(),
+                      "dt_appointed_employee": tmt.isoformat(), "dt_grade_start": tmt.isoformat(),
+                      "employment_type": "PKWTT" if asal else "Talent Mobility",
+                      "job_class": jc, "gender": "Male" if o["gender"] == "L" else "Female",
+                      "mobile_phone": "+62" + _ponsel(r)[1:], "corporate_email": email,
+                      "blood_type": r.choice(["A", "B", "AB", "O"]), "ethnicity": None,
+                      "home_phone": None})
+        alamat_b.append({"id_employee": id_sistem, "old_nip": nip, "employee_name": nama,
+                         "address_type": "alamat_tetap",
+                         "street_address": f"Jl. {r.choice(BELAKANG)} No. {r.randrange(1, 150)}",
+                         "city": o["kota"], "district": None, "province": PROVINSI[o["kota"]],
+                         "postal_code": _digit(r, 5), "country": "Indonesia",
+                         "geo_latitude": None, "geo_longitude": None, "created_at": None, "updated_at": None})
+        kontrak.append({"id_contract": f"CT-{9000 + o['k']:04d}", "id_employee": id_sistem, "old_nip": nip,
+                        "employee_name": nama, "corporate_email": email,
+                        "contract_number": f"KTR/{tmt.year}/{_digit(r, 4)}",
+                        "contract_type": "pkwtt", "contract_status": "active",
+                        "dt_contract_start": tmt.isoformat(), "dt_contract_end": None,
+                        "dt_probation_start": tmt.isoformat(),
+                        "dt_probation_end": (tmt + timedelta(days=60)).isoformat(),
+                        "contract_renewal_count": 0, "created_at": None, "updated_at": None})
+        p = posisi[r.randrange(len(posisi))]
+        riwayat.append({"id": str(len(riwayat) + 1), "nik": str(int(nip)), "name": nama,
+                        "position_code": p["code_position"], "position_name": p["name_position"],
+                        "grade_name": p["grade_min"], "band_name": None,
+                        "area_name": area[1], "directorate": DIREKTORAT_SNH[o["k"] % 5],
+                        "division_name": f"Divisi {BIDANG[o['k'] % len(BIDANG)]}",
+                        "job_family": BIDANG[o["k"] % len(BIDANG)],
+                        "is_current": "0" if asal else "1",
+                        "start_date": tmt.isoformat(),
+                        "end_date": o["tmt_pindah"].isoformat() if asal else None,
+                        "perusahaan": "PT. Angkasa Biru Retail", "achievement": None,
+                        "desc_tugas_kewenangan": None, "code_subholding": "ABR"})
+        master_csv.append({"Kode Perusahaan": "ABR", "NIK": str(int(nip)), "Top Talent": "Tidak"})
 
     data["employee-profile"] = profil
     data["employee-personal-details"] = rinci
@@ -1083,6 +1215,53 @@ def bangun_abdestination() -> dict:
                                                    date(2025, 12, 20) if periode == PERIODE[0] else date(2026, 6, 30)).isoformat()})
         master_csv.append({"Kode Perusahaan": "ABD", "NIK": nik,
                            "Top Talent": "Ya" if _rng("abd-tt", nik).random() < 0.03 else "Tidak"})
+
+    # Talent Mobility: ABD sebagai perusahaan asal (diperbantukan keluar) atau tujuan (masuk)
+    for o in _daftar_mobilitas():
+        if "ABD" not in (o["asal"], o["tujuan"]):
+            continue
+        asal = o["asal"] == "ABD"
+        r = _rng("abd-mob", o["k"])
+        tmt = o["tmt_asal"] if asal else o["tmt_pindah"]
+        nik = f"ABD9{o['k']:04d}"
+        nama = o["nama"]
+        email = _email(nama, "angkasabirudestinasi.id", r)
+        profil.append({"id_employee": nik, "new_nip": nik, "old_nip": nik, "full_name": nama,
+                       "academic_title": r.choice(GELAR), "corporate_email": email,
+                       "employment_status": "tidak aktif" if asal else "aktif", "photo_blob": None,
+                       "area_name": DESTINASI[o["k"] % 6][1], "directorate_name": f"Direktorat {BIDANG[o['k'] % 5]}",
+                       "org_group_name": f"Group {BIDANG[o['k'] % len(BIDANG)]}", "band_name": None})
+        identifikasi.append({"id_employee": nik, "id_nik": o["id_nik"],
+                             "id_npwp": "".join(c for c in o["id_npwp"] if c.isdigit()),
+                             "birth_place": o["kota"],
+                             "dt_birth": o["lahir"].isoformat(), "dt_start_work": tmt.isoformat(),
+                             "dt_retirement": _pensiun(o["lahir"], 56).isoformat(),
+                             "dt_appointed_employee": tmt.isoformat(),
+                             "dt_grade_start": tmt.isoformat(),
+                             "employment_type": "PKWTT" if asal else "Talent Mobility",
+                             "job_class": str(r.choice([9, 10, 11, 12, 13])),
+                             "gender": o["gender"], "mobile_phone": _ponsel(r),
+                             "corporate_email": email})
+        alamat.append({"id_employee": nik, "address_type": "Alamat Tetap",
+                       "street_address": f"Jl. {r.choice(BELAKANG)} No. {r.randrange(1, 150)}",
+                       "city": o["kota"], "district": None, "province": PROVINSI[o["kota"]],
+                       "postal_code": _digit(r, 5)})
+        kontrak.append({"id_contract": f"CT-{nik}", "id_employee": nik,
+                        "contract_number": f"KTR-D/{tmt.year}/{_digit(r, 4)}",
+                        "contract_type": "PKWTT", "contract_status": "aktif",
+                        "dt_contract_start": tmt.isoformat(), "dt_contract_end": None,
+                        "dt_probation_start": tmt.isoformat(),
+                        "dt_probation_end": (tmt + timedelta(days=60)).isoformat(),
+                        "contract_renewal_count": 0})
+        v = varian[r.randrange(len(varian))]
+        riwayat.append({"id_position_history": str(len(riwayat) + 1), "new_nip": nik,
+                        "fk_position_variant_id": v["id_position_variant"],
+                        "position_name": v["position_variant_name"], "position_type": None,
+                        "job_class": v["job_class"], "org_unit_name": None,
+                        "company_name": "PT Angkasa Biru Destination",
+                        "dt_position_start": tmt.isoformat(),
+                        "dt_position_end": o["tmt_pindah"].isoformat() if asal else None})
+        master_csv.append({"Kode Perusahaan": "ABD", "NIK": nik, "Top Talent": "Tidak"})
 
     # secondary assignment (katalog 2.10): turunan penugasan + varian sah
     sekunder = [{"id_secondary_assignment": f"SA-{a['id_assignment_history']}", "new_nip": a["id_employee"],

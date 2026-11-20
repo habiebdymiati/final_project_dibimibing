@@ -9,7 +9,7 @@
 # Selebihnya (kredensial, data, dokumen, visualisasi, alat bantu, hasil runtime) hanya lokal.
 # =============================================================================
 
-# --- Kredensial: jangan pernah di-commit
+# --- Kredensial: jangan pernah di-commit (.env.example tetap masuk git)
 .env
 !.env.example
 

@@ -121,11 +121,13 @@ def test_dt_birth_dan_dt_appointed_dari_berkas_referensi(dwh):
 
 
 def test_id_employee_berurut_menurut_tmt_karyawan(dwh):
-    """Nomor urut mengikuti TMT pada berkas referensi: TMT lebih awal -> nomor lebih kecil; tanpa TMT di belakang."""
-    assert scalar(dwh, """select count(*) from (select dt_tmt, lag(dt_tmt) over (order by urutan) as sebelum
+    """Nomor urut mengikuti TMT pada berkas referensi: TMT lebih awal -> nomor lebih kecil; tanpa TMT di belakang.
+    Registry incremental (ID stabil), jadi urutan TMT dijamin di dalam tiap batch penambahan (dwh_assigned_at)."""
+    assert scalar(dwh, """select count(*) from (select dt_tmt, lag(dt_tmt) over (partition by dwh_assigned_at order by urutan) as sebelum
                                                from registry_angkasabiru.registry_id_employee_angkasabiru) t where dt_tmt < sebelum""") == 0
     assert scalar(dwh, """select count(*) from registry_angkasabiru.registry_id_employee_angkasabiru a join registry_angkasabiru.registry_id_employee_angkasabiru b
-                          on a.dt_tmt is null and b.dt_tmt is not null and a.urutan < b.urutan""") == 0
+                          on a.dwh_assigned_at = b.dwh_assigned_at
+                         and a.dt_tmt is null and b.dt_tmt is not null and a.urutan < b.urutan""") == 0
     assert scalar(dwh, "select count(*) = max(urutan) and min(urutan) = 1 from registry_angkasabiru.registry_id_employee_angkasabiru")
     assert scalar(dwh, "select bool_and(id_employee = (10000000 + urutan)::varchar) from registry_angkasabiru.registry_id_employee_angkasabiru")
     cocok = scalar(dwh, """select count(*) from registry_angkasabiru.registry_id_employee_angkasabiru g

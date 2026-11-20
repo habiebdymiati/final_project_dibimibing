@@ -55,7 +55,8 @@ def test_company_angkasabiruretail_memakai_kode_dwh(dwh):
 
 
 def test_id_employee_berurut_menurut_tanggal_mulai_bekerja(dwh):
-    assert scalar(dwh, """select count(*) from (select dt_tmt, lag(dt_tmt) over (order by urutan) as sebelum
+    # urutan TMT dijamin di dalam tiap batch penambahan (registry incremental, ID stabil)
+    assert scalar(dwh, """select count(*) from (select dt_tmt, lag(dt_tmt) over (partition by dwh_assigned_at order by urutan) as sebelum
                                                from registry_angkasabiruretail.registry_id_employee_angkasabiruretail) t where dt_tmt < sebelum""") == 0
     assert scalar(dwh, "select count(*) = max(urutan) and min(urutan) = 1 from registry_angkasabiruretail.registry_id_employee_angkasabiruretail")
 

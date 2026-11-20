@@ -7,7 +7,7 @@ from .conftest import query, scalar
 
 DIM = {"dim_employee", "dim_position_master", "dim_position_variant", "dim_band", "dim_org_unit", "dim_company",
        "dim_date", "dim_contract_type", "dim_period", "dim_nine_box"}
-FACT = {"fact_employee_snapshot", "fact_talent_analytics"}
+FACT = {"fact_employee_snapshot", "fact_talent_analytics", "fact_talent_mobility"}
 SUMBER = {"angkasabiru": "AB-COMP-AB", "angkasabiruretail": "AB-COMP-ABR", "abdestination": "AB-COMP-ABD"}
 
 

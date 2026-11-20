@@ -4,14 +4,6 @@ Pipeline multi-sumber: menarik data pegawai PT Angkasa Biru (API SAPATH), PT Ang
 mentransformasikannya ke layer silver per perusahaan, lalu menggabungkannya menjadi star schema gold
 yang dibaca dashboard Metabase. Seluruhnya berjalan di Docker dan diorkestrasi Airflow.
 
-> **Sumber data sejak 15 November 2026: instance API tiruan (mock)** — empat layanan Docker yang meniru
-> perilaku API asli (autentikasi, paginasi, bentuk respons) sehingga konektor pipeline tidak berubah:
-> tiga HRIS perusahaan (Angkasa Biru ±7.500 pegawai fiktif, Angkasa Biru Retail ±455, Angkasa Biru
-> Destination ±600) plus **Angkasa Biru LMS** (sistem grup, learning agility lintas perusahaan).
-> **Seluruh datanya sintetis** dan dibangkitkan deterministik oleh `mock_api/bangun_data.py`; semua data
-> pegawai sungguhan telah dihapus dari repositori, database, MinIO, dan Metabase. CSV referensi dan
-> fixture sample juga sintetis: `python mock_api/bangun_data.py --sample data/sample --referensi data/refrence`.
-> Acuan pemrosesan: `data_catalogue/resume/data-catalogue-rinjani-2.0-sesuai-brd.html`.
 
 ## 1. Gambaran sistem
 
@@ -327,30 +319,7 @@ Yang sebaiknya tidak dilakukan: `make reset` / `docker compose down -v` (menghap
 riwayat gold, arsip MinIO); mengubah tabel `registry_<sumber>`; menjalankan `make gold` saat pipeline
 berjalan (antrean `flock` tidak lintas container); mencocokkan `id_employee` dengan `old_nip`.
 
-## 8. Riwayat keputusan
-
-| Tanggal | Keputusan |
-|---|---|
-| 06 Nov 2026 | **Reset total**: seluruh transformasi lama (staging→core→marts), publish, dashboard, dan isi kedua database dihapus; pemetaan disusun ulang dari berkas mapping per sumber. Kode lama di `arsip/pra-reset-2026-11-06.tar.gz` (lokal) dan riwayat git |
-| 07 Nov 2026 | ITDC ditangguhkan (definisi sumber, DAG, dan datanya dihapus); top talent diambil dari master data |
-| 09 Nov 2026 | Ingest menjadi dua fase (`extract_api` → `load_raw`): `raw_` dimuat dari arsip MinIO, bukan langsung dari API |
-| 09 Nov 2026 | Tangga band Angkasa Biru Retail diselaraskan dengan Angkasa Biru (Band 1–4) |
-| 09 Nov 2026 | EQS, 9-Box (`fact_talent_analytics`, `dim_nine_box`, `dim_period`), dan transformasi `learning_history` dihapus sampai sumber datanya tersedia; `is_top_talent` pindah ke `fact_employee_snapshot` |
-| 15 Nov 2026 | **Sumber data dirombak ke instance API tiruan** (`mock_api/`, dua layanan Docker) dengan acuan pemrosesan katalog BRD: data yang tidak pernah dikirim API asli dilengkapi (rating kinerja AP, competency assessment, learning agility, learnings/cuti Angkasa Biru Retail). Silver menjadi 24 tabel per sumber (+learning_history, learning_agility_assessment, competency_assessment, employee_secondary_assignment); gold kembali 2 fact + 10 dimensi: EQS dan 9-Box dihitung lagi, komponen aspirasi masih menunggu Rinjani |
-| 16 Nov 2026 | Slug sumber ketiga diseragamkan ke bahasa Inggris: `abdestinasi` → **`abdestination`** (tabel, schema, env `ABDESTINATION_*`, service `mock-abdestination`, DAG `pipeline_abdestination`) |
-| 20 Nov 2026 | **Talent Mobility**: 12 pegawai sintetis PKWTT diperbantukan antar perusahaan (identitas sama di dua perusahaan; non-aktif di asal dengan riwayat posisi ditutup pada tanggal pindah, aktif di tujuan dengan `employment_type` 'Talent Mobility'), sehingga di gold tiap orang terhitung sekali di perusahaan terakhir. Fact ketiga `fact_talent_mobility` (asal → sekarang) + 3 kartu dashboard Talenta; uji urutan TMT registry menjadi per batch penambahan (registry incremental, ID stabil) |
-| 16 Nov 2026 | PT Angkasa Biru ditetapkan sebagai **Holding** (ABR dan ABD tetap Member); seed, mock, dan katalog diperbarui |
-| 16 Nov 2026 | Dashboard ketiga **Gold · Talenta** (11 kartu): EQS, komponen, distribusi, kisi 9-Box sesuai kisi acuan, komposisi klaster, EQS per band, top talent vs lainnya |
-| 16 Nov 2026 | **Sumber keempat: Angkasa Biru LMS** (`lms`, sistem grup — bukan perusahaan): learning agility dipindah dari mock HRIS per perusahaan ke instance mock LMS terpisah sesuai katalog BRD 4.4; satu endpoint `assessments` lintas perusahaan (`company_code` AB/ABR/ABD), auth `x-api-key`, DAG `pipeline_lms`; staging ketiga perusahaan membaca `raw_lms` sehingga silver/gold tidak berubah bentuk |
-| 16 Nov 2026 | **Sumber ketiga: PT Angkasa Biru Destination** (`abdestination`, kode `ABD`, registry `30`+6 digit, usia pensiun 56) — mock API NATA RINJANI dari koleksi Postman: bearer token statis, paginasi `page`/`per_page` maks 500, 30 endpoint `/organization`/`/employee`/`/transaction` (learning agility & competency assessment dilengkapi mock); field bergaya katalog sehingga pemetaan silver tipis. Usia pensiun: AB 58, ABR 56, ABD 56; data mock mematuhi referential integrity & business rules kontrak/penugasan |
-| 15 Nov 2026 | **Semua data pegawai sungguhan dihapus** (file di folder, volume Postgres DWH & Data Hub, arsip MinIO, Metabase, beserta dokumen `brd/` dan `deliverable/`; `data_catalogue/` dipertahankan). Mock menjadi generator sintetis murni; fixture sample dan CSV referensi dibuat ulang sintetis; registry `id_employee` dimulai dari nol |
-
-Dokumen katalog (lokal di `data_catalogue/resume/`): **acuan berjalan**
-`data-catalogue-rinjani-2.0-sesuai-brd.html` — katalog hasil penyelarasan dengan tiga BRD final (Portal,
-Talent, Performance): 29 entitas dipertahankan, definisi field, enum, model silver/gold (6.1–6.2), dan
-rumus EQS/9-Box (lampiran 7.1–7.2) yang dipakai transformasi ini.
-
-## 9. Operasional
+## 8. Operasional
 
 - **Idempotensi**: batch di atas `keep_batches` terpangkas otomatis; `raw_table_*` truncate-insert; run
   ulang di tanggal yang sama menimpa snapshot tanggal itu saja.

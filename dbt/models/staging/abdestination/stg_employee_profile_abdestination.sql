@@ -1,4 +1,4 @@
-{# Mapping ABD: employee_profile <- employee_profiles (NATA RINJANI memakai nama field katalog;
+{# Mapping ABD: employee_profile <- employee_profiles (HRIS ABD memakai nama field katalog;
    nilai sudah baku). id_employee = kunci registri DWH (30 + 6 digit urut TMT); API memakai satu pengenal
    (id_employee = new_nip = old_nip). band_name: dari API bila ada, selama kosong diturunkan dari job_class
    (employee_identifications) lewat tangga band. #}

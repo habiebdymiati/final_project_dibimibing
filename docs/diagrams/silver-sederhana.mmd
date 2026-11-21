@@ -1,6 +1,9 @@
 erDiagram
     direction LR
     %% ERD silver sederhana: 25 entitas per perusahaan, hanya relasi (atribut lengkap ada di katalog bagian 2-5)
+    employee_profile ||--o{ career_aspiration : "id_employee"
+    position_master ||--o{ career_aspiration : "id_target_position"
+    job_family ||--o{ career_aspiration : "id_target_job_family"
     org_unit ||--o{ org_unit : "id_parent_org_unit"
     company ||--o{ org_unit : "fk_id_company"
     job_family ||--o{ position_master : "id_job_family"
@@ -27,6 +30,3 @@ erDiagram
     employee_profile ||--o{ competency_assessment : "id_employee"
     employee_profile ||--o{ employee_secondary_assignment : "id_employee"
     position_variant ||--o{ employee_secondary_assignment : "fk_position_variant_id"
-    employee_profile ||--o{ career_aspiration : "id_employee"
-    position_master ||--o{ career_aspiration : "id_target_position"
-    job_family ||--o{ career_aspiration : "id_target_job_family"

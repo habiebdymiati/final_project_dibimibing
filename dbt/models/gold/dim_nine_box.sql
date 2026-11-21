@@ -1,5 +1,5 @@
 {#
-  Dimensi kisi 9-Box, mengikuti acuan kisi Rinjani (gambar acuan 15 November 2026):
+  Dimensi 9-Box, mengikuti kisi acuan 9-Box (gambar acuan 15 November 2026):
   sumbu mendatar = performance (Low -> High), sumbu tegak = capacity/potential (Low -> High).
 
         capacity High   | 4. Sleeping Tiger | 7. Promotable        | 9. High Potential

@@ -487,6 +487,11 @@ def test_angkasabiru_source_definition_is_consistent():
     assert cfg["api"]["default_auth_header"] == "x-api-key"
     assert [e["name"] for e in cfg["endpoints"]] == ["learning_agility_assessments"]
 
+    cfg = load_source("tms")
+    assert cfg["raw"]["schema"] == "raw_tms"
+    assert cfg["api"]["default_auth_header"] == "x-api-key"
+    assert [(e["name"], e["path"]) for e in cfg["endpoints"]] == [("career_aspirations", "/aspirations")]
+
 
 # ===================== Kemampuan konektor untuk API bergaya SF6 =====================
 # API seperti ini membedakan endpoint lewat query parameter ?sfid=..., bukan lewat path, dan setiap

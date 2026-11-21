@@ -1,5 +1,5 @@
 """Layer silver Angkasa Biru Destinasi (dbt): raw_table_abdestination -> staging -> silver_abdestination.
-API NATA RINJANI memakai field bergaya katalog, jadi pemetaannya tipis. Usia pensiun 56 tahun."""
+API HRIS Angkasa Biru Destination memakai field bergaya katalog, jadi pemetaannya tipis. Usia pensiun 56 tahun."""
 import pytest
 
 from .conftest import query, scalar
@@ -11,9 +11,11 @@ ENTITAS = {
     "employee_performance_history", "employee_leave_history", "employee_education_history",
     "employee_disciplinary",
     "learning_history", "learning_agility_assessment", "competency_assessment", "employee_secondary_assignment",
+    "career_aspiration",   # katalog 5.1: dari Angkasa Biru TMS (sistem talenta grup), bukan dari HRIS perusahaan
     "top_talent",   # bukan entitas katalog: penanda top talent dari master data
 }
 S = "silver_abdestination"
+ASPIRASI = f"{S}.career_aspiration_abdestination"
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -73,3 +75,34 @@ def test_kontrak_mengikuti_business_rules(dwh):
     assert scalar(dwh, f"select count(*) from {S}.employee_contract_abdestination where dt_contract_end <= dt_contract_start") == 0
     assert scalar(dwh, f"""select count(*) from raw_table_abdestination.employee_contracts
                            where public.try_date(dt_probation_end) > public.try_date(dt_contract_start) + interval '3 months'""") == 0
+
+
+def test_career_aspiration_merujuk_pegawai_posisi_dan_job_family(dwh):
+    """career_aspiration berasal dari Angkasa Biru TMS (baris ber-company_code 'ABD'): setiap baris TMS masuk, dan
+    pegawai, posisi target, serta job family target-nya dikenal di silver perusahaan ini."""
+    total, posisi, job_family = query(dwh, f"""select count(*), count(id_target_position), count(id_target_job_family)
+                                              from {ASPIRASI}""")[0]
+    assert total > 0 and posisi > 0 and job_family > 0
+    assert total == scalar(dwh, "select count(*) from raw_table_tms.career_aspirations where company_code = 'ABD'")
+    assert scalar(dwh, f"""select count(*) from {ASPIRASI} a
+                           where not exists (select 1 from {S}.employee_profile_abdestination p
+                                             where p.id_employee = a.id_employee)""") == 0
+    assert scalar(dwh, f"""select count(*) from {ASPIRASI} a
+                           where a.id_target_position is not null
+                             and not exists (select 1 from {S}.position_master_abdestination m
+                                             where m.id_position_master = a.id_target_position)""") == 0
+    assert scalar(dwh, f"""select count(*) from {ASPIRASI} a
+                           where a.id_target_job_family is not null
+                             and not exists (select 1 from {S}.job_family_abdestination f
+                                             where f.id_job_family = a.id_target_job_family)""") == 0
+
+
+def test_career_aspiration_satu_baris_per_pegawai_per_sumber_aspirasi(dwh):
+    """Sumber aspirasi hanya empat nilai baku, paling banyak satu baris per pegawai per sumber aspirasi, dan tanggal
+    aspirasi tidak di masa depan."""
+    assert {r[0] for r in query(dwh, f"select distinct aspiration_source from {ASPIRASI}")} == {
+        "individual", "supervisor", "job_holder", "unit"}
+    assert scalar(dwh, f"""select count(*) from (select 1 from {ASPIRASI}
+                                                 group by id_employee, aspiration_source having count(*) > 1) d""") == 0
+    assert scalar(dwh, f"select count(*) from {ASPIRASI} where dt_aspiration > current_date") == 0
+    assert scalar(dwh, f"select count(dt_aspiration) from {ASPIRASI}") > 0

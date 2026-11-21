@@ -2,6 +2,11 @@
   Metrik per pegawai (termasuk yang tidak aktif) pada tanggal acuan; dipakai fact_employee_snapshot.
   is_top_talent dari silver top_talent_<sumber> (kolom Top Talent master data); pegawai di luar daftar = false.
   contract_type_key: kontrak aktif terbaru; bila tidak ada kontrak (Angkasa Biru) memakai employment_type yang sudah diseragamkan.
+  aspiration_score : komposit 4 sumber aspirasi karier dari Angkasa Biru TMS (katalog BRD 5.1, lampiran 7.1), skala 0-100:
+                     per target, bobot sumber yang BERBEDA dijumlahkan (individual 20, supervisor 20, job_holder 30, unit 30);
+                     nilai pegawai = target bernilai tertinggi. Aspirasi bertanggal sesudah tanggal acuan belum dihitung.
+  ada_data_aspirasi: perusahaan itu sudah punya data aspirasi pada tanggal acuan; membedakan pegawai tanpa aspirasi (nilai 0)
+                     dari perusahaan tanpa data sama sekali (komponen NULL) di fact_talent_analytics.
 #}
 with emp as (
     {{ dari_silver('employee_profile', 'id_employee, new_nip, employment_status') }}
@@ -63,6 +68,33 @@ disiplin as (
 ),
 sumber_disiplin as (
     select distinct source_system_code from disiplin_baris
+),
+aspirasi_baris as (
+    -- aspirasi karier yang sudah tercatat pada tanggal acuan (katalog BRD 5.1; komponen EQS Aspirasi)
+    select *
+    from ({{ dari_silver('career_aspiration', 'id_employee, aspiration_source, id_target_position, id_target_job_family, dt_aspiration') }}) a
+    where dt_aspiration is null or dt_aspiration <= {{ as_of() }}
+),
+aspirasi_target as (
+    -- nilai per (pegawai, target) = jumlah bobot sumber aspirasi yang berbeda; aspirasi yang hanya
+    -- menyebut job family (tanpa posisi) dihitung sebagai target 'JF:<job family>'
+    select id_employee, target, sum(bobot) as nilai
+    from (
+        select distinct id_employee, aspiration_source,
+               coalesce(id_target_position, 'JF:' || coalesce(id_target_job_family, '-')) as target,
+               case aspiration_source when 'individual' then 20 when 'supervisor' then 20
+                                      when 'job_holder' then 30 when 'unit'       then 30 else 0 end as bobot
+        from aspirasi_baris
+    ) s
+    group by 1, 2
+),
+aspirasi as (
+    select id_employee, max(nilai)::numeric as aspiration_score
+    from aspirasi_target
+    group by 1
+),
+sumber_aspirasi as (
+    select distinct source_system_code from aspirasi_baris
 )
 select
     e.source_system_code,
@@ -82,11 +114,13 @@ select
     jf.job_fit_score,
     ag.learning_agility_score,
     {{ months_between('p.dt_mulai_job_family', as_of()) }} as tenure_in_job_family_months,
+    asp.aspiration_score,
     round(pl.mandatory_completion_rate * 100, 1) as pct_mandatory_training,
     coalesce(pl.mandatory_completion_rate >= 1, false) as is_mandatory_training_complete,
     coalesce(tt.is_top_talent, false) as is_top_talent,
     coalesce(d.ada_aktif, false) as has_active_disciplinary,
-    sd.source_system_code is not null as ada_data_disiplin
+    sd.source_system_code is not null as ada_data_disiplin,
+    sa.source_system_code is not null as ada_data_aspirasi
 from emp e
 left join identitas i on i.id_employee = e.id_employee
 left join perusahaan c on c.source_system_code = e.source_system_code
@@ -100,3 +134,5 @@ left join agility ag on ag.id_employee = e.id_employee
 left join pelatihan pl on pl.id_employee = e.id_employee
 left join disiplin d on d.id_employee = e.id_employee
 left join sumber_disiplin sd on sd.source_system_code = e.source_system_code
+left join aspirasi asp on asp.id_employee = e.id_employee
+left join sumber_aspirasi sa on sa.source_system_code = e.source_system_code

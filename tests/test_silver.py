@@ -11,6 +11,7 @@ ENTITAS = {
     "employee_performance_history", "employee_leave_history", "employee_education_history",
     "employee_disciplinary",
     "learning_history", "learning_agility_assessment", "competency_assessment", "employee_secondary_assignment",
+    "career_aspiration",   # katalog 5.1: dari Angkasa Biru TMS (sistem talenta grup), bukan dari HRIS perusahaan
     "top_talent",   # bukan entitas katalog: penanda top talent dari master data
 }
 AP = "dwh_source_system = 'angkasabiru'"
@@ -352,3 +353,40 @@ def test_cakupan_setelah_nominatif(dwh):
         from silver_angkasabiru.employee_profile_angkasabiru where {AP}""")[0]
     assert area / total >= 0.99 and direktorat / total >= 0.97 and grup / total >= 0.90
 
+
+def test_career_aspiration_merujuk_pegawai_posisi_dan_job_family(dwh):
+    """career_aspiration berasal dari Angkasa Biru TMS (baris ber-company_code 'AB'): setiap baris TMS masuk, dan
+    pegawai, posisi target, serta job family target-nya dikenal di silver perusahaan ini."""
+    total, posisi, job_family = query(dwh, """select count(*), count(id_target_position), count(id_target_job_family)
+                                              from silver_angkasabiru.career_aspiration_angkasabiru""")[0]
+    assert total > 0 and posisi > 0 and job_family > 0
+    assert total == scalar(dwh, "select count(*) from raw_table_tms.career_aspirations where company_code = 'AB'")
+    assert scalar(dwh, """select count(*) from silver_angkasabiru.career_aspiration_angkasabiru a
+                          where not exists (select 1 from silver_angkasabiru.employee_profile_angkasabiru p
+                                            where p.id_employee = a.id_employee)""") == 0
+    assert scalar(dwh, """select count(*) from silver_angkasabiru.career_aspiration_angkasabiru a
+                          where a.id_target_position is not null
+                            and not exists (select 1 from silver_angkasabiru.position_master_angkasabiru m
+                                            where m.id_position_master = a.id_target_position)""") == 0
+    assert scalar(dwh, """select count(*) from silver_angkasabiru.career_aspiration_angkasabiru a
+                          where a.id_target_job_family is not null
+                            and not exists (select 1 from silver_angkasabiru.job_family_angkasabiru f
+                                            where f.id_job_family = a.id_target_job_family)""") == 0
+
+
+def test_career_aspiration_satu_baris_per_pegawai_per_sumber_aspirasi(dwh):
+    """Sumber aspirasi hanya empat nilai baku, paling banyak satu baris per pegawai per sumber aspirasi, dan tanggal
+    aspirasi tidak di masa depan."""
+    assert {r[0] for r in query(dwh, "select distinct aspiration_source from silver_angkasabiru.career_aspiration_angkasabiru")} == {
+        "individual", "supervisor", "job_holder", "unit"}
+    assert scalar(dwh, """select count(*) from (select 1 from silver_angkasabiru.career_aspiration_angkasabiru
+                                                group by id_employee, aspiration_source having count(*) > 1) d""") == 0
+    assert scalar(dwh, "select count(*) from silver_angkasabiru.career_aspiration_angkasabiru where dt_aspiration > current_date") == 0
+    assert scalar(dwh, "select count(dt_aspiration) from silver_angkasabiru.career_aspiration_angkasabiru") > 0
+
+
+def test_employment_type_mentah_hanya_pkwtt_dan_pkwt(dwh):
+    """API Angkasa Biru hanya mengirim PKWTT dan PKWT; pegawai Talent Mobility pun berstatus PKWTT
+    (mobilitas dikenali di gold lewat identitas yang sama di dua perusahaan, bukan dari employment_type)."""
+    assert {r[0] for r in query(dwh, "select distinct employment_type from raw_table_angkasabiru.employee_identification")} == {"PKWTT", "PKWT"}
+    assert {r[0] for r in query(dwh, "select distinct employment_type from silver_angkasabiru.employee_identification_angkasabiru")} == {"PKWTT", "PKWT"}

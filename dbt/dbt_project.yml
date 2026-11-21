@@ -1,5 +1,5 @@
 # Transformasi raw_table_<sumber> -> silver -> gold, disusun ulang setelah reset 2026-11-06.
-# Acuan struktur : data_catalogue/resume/data-catalogue-rinjani-2.0-efisien-mapping-api.html
+# Acuan struktur : data_catalogue/resume/data-catalogue-2.0-efisien-mapping-api.html
 # Acuan pemetaan : data/refrence/mapping api to <sumber>.csv (satu berkas per sumber)
 #
 # Target `dwh` (Postgres DWH): setiap schema DAN tabel/view berakhiran nama pemilik datanya (_<sumber>):

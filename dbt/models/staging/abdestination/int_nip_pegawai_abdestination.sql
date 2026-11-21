@@ -1,5 +1,5 @@
 {#
-  Semesta NIP pegawai Angkasa Biru Destinasi beserta TMT-nya. API NATA RINJANI memakai satu pengenal
+  Semesta NIP pegawai Angkasa Biru Destinasi beserta TMT-nya. API HRIS ABD memakai satu pengenal
   (id_employee = new_nip = old_nip), jadi semesta = profiles + semua tabel anak yang membawa kunci pegawai.
   TMT = employee_identifications.dt_start_work.
 #}

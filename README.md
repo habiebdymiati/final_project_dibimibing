@@ -1,6 +1,6 @@
 # Angkasa Biru Data Harmonization — Angkasa Biru & Angkasa Biru Retail
 
-Pipeline multi-sumber: menarik data pegawai PT Angkasa Biru (API SAPATH), PT Angkasa Biru Retail (API Rinjani), dan PT Angkasa Biru Destination (API NATA RINJANI), mengarsipkannya apa adanya di MinIO, memuatnya ke Postgres DWH,
+Pipeline multi-sumber: menarik data pegawai PT Angkasa Biru (API HRIS AB), PT Angkasa Biru Retail (API HRIS ABR), dan PT Angkasa Biru Destination (API HRIS ABD), ditambah dua sistem grup — Angkasa Biru LMS (learning agility) dan Angkasa Biru TMS (aspirasi karier) —, mengarsipkannya apa adanya di MinIO, memuatnya ke Postgres DWH,
 mentransformasikannya ke layer silver per perusahaan, lalu menggabungkannya menjadi star schema gold
 yang dibaca dashboard Metabase. Seluruhnya berjalan di Docker dan diorkestrasi Airflow.
 
@@ -9,7 +9,7 @@ yang dibaca dashboard Metabase. Seluruhnya berjalan di Docker dan diorkestrasi A
 
 ### Tech stack
 
-![Tech stack: empat mock API FastAPI → konektor Python → MinIO → PostgreSQL DWH + dbt → PostgreSQL Data Hub (gold) → Metabase, diorkestrasi Airflow di Docker Compose](docs/img/architecture.svg)
+![Tech stack: lima mock API FastAPI → konektor Python → MinIO → PostgreSQL DWH + dbt → PostgreSQL Data Hub (gold) → Metabase, diorkestrasi Airflow di Docker Compose](docs/img/architecture.svg)
 
 
 ![Alur data dari API ke MinIO, Postgres DWH, Postgres Data Hub, sampai Metabase](docs/img/proses-1-alur-data.png)
@@ -25,10 +25,11 @@ Label pada panah adalah nama task Airflow yang mengerjakannya. Kotak bergaris pu
 | Postgres DWH | `localhost:5433`, db `angkasabiru_dwh`, user `dwh` | Layer raw, raw_table, reference, seed, registry, staging, silver |
 | Postgres Data Hub | `localhost:5434`, db `angkasabiru_datahub`, user `datahub` | Layer gold (star schema) |
 | Metabase | http://localhost:3000 (`METABASE_PORT`), koleksi *Angkasa Biru Data Hub* | 3 dashboard; role read-only, hanya membaca schema `gold` |
-| Mock Angkasa Biru | `http://mock-angkasabiru:8000` (host: `localhost:8101`) | Instance API tiruan SAPATH: bearer login + paginasi; sumber data pipeline |
-| Mock Angkasa Biru Retail | `http://mock-angkasabiruretail:8000` (host: `localhost:8102`) | Instance API tiruan Rinjani: header `api_key`/`x-api-key`; sumber data pipeline |
-| Mock Angkasa Biru Destination | `http://mock-abdestination:8000` (host: `localhost:8103`) | Instance API tiruan NATA RINJANI: bearer token statis, paginasi `page`/`per_page`; sumber data pipeline |
+| Mock Angkasa Biru | `http://mock-angkasabiru:8000` (host: `localhost:8101`) | Instance API tiruan HRIS Angkasa Biru: bearer login + paginasi; sumber data pipeline |
+| Mock Angkasa Biru Retail | `http://mock-angkasabiruretail:8000` (host: `localhost:8102`) | Instance API tiruan HRIS Angkasa Biru Retail: header `api_key`/`x-api-key`; sumber data pipeline |
+| Mock Angkasa Biru Destination | `http://mock-abdestination:8000` (host: `localhost:8103`) | Instance API tiruan HRIS Angkasa Biru Destination: bearer token statis, paginasi `page`/`per_page`; sumber data pipeline |
 | Mock Angkasa Biru LMS | `http://mock-lms:8000` (host: `localhost:8104`) | Sistem LMS grup: learning agility lintas perusahaan (katalog BRD 4.4), header `x-api-key` |
+| Mock Angkasa Biru TMS | `http://mock-tms:8000` (host: `localhost:8105`) | Sistem talenta grup (Talent Management System): aspirasi karier lintas perusahaan (katalog BRD 5.1), header `x-api-key` |
 
 Port host diatur lewat variabel `*_PORT` / `*_HOST_PORT` di `.env` (lihat `.env.example`); antar
 container Postgres memakai `5432` dengan host `postgres-dwh` dan `postgres-datahub`. Postgres metadata
@@ -45,7 +46,7 @@ Airflow dan Metabase tidak dibuka ke host.
 | `seed_<sumber>` | DWH | `transform_silver` | Rujukan buatan DWH dari `dbt/seeds/`: band, perusahaan, rating, pemetaan nilai baku |
 | `registry_<sumber>` | DWH | `transform_silver` | `id_employee` buatan DWH; hanya menambah NIP baru, **tidak pernah dinomori ulang** |
 | `staging_<sumber>` | DWH | `transform_silver` | View dbt berisi aturan pemetaan (`stg_*`, `int_*`); tidak menyimpan data |
-| `silver_<sumber>` | DWH | `transform_silver` | 24 tabel per perusahaan (23 entitas katalog BRD + top_talent), sudah diharmonisasi; nama schema dan tabel berakhiran pemilik datanya |
+| `silver_<sumber>` | DWH | `transform_silver` | 25 tabel per perusahaan (24 entitas katalog BRD + top_talent), sudah diharmonisasi; nama schema dan tabel berakhiran pemilik datanya |
 | `fdw_silver_<sumber>` | Data Hub | `build_gold` | Foreign table cermin silver (tanpa salinan); dibuat ulang tiap run oleh `ingestion/fdw_silver.py` |
 | `gold` | Data Hub | `build_gold` | Star schema gabungan semua perusahaan: 3 fact + 10 dimensi (katalog BRD 6.2); kunci diawali kode sumber (`AB-`, `ABR-`); baris `UNKNOWN` menjamin relasi fact selalu berpasangan |
 
@@ -59,9 +60,10 @@ bila belum ada — clone baru bisa langsung jalan tanpa menyiapkan apa pun.
 cp .env.example .env            # nilai bawaan langsung jalan; ganti bila perlu
 make up                         # db, MinIO, Airflow, mock API (+ bangkitkan data referensi sintetis)
 make pipeline SOURCE=angkasabiru          # extract + load + flatten satu sumber
-make pipeline SOURCE=angkasabiruretail    # (sumber: angkasabiru | angkasabiruretail | abdestination | lms)
+make pipeline SOURCE=angkasabiruretail    # (sumber: angkasabiru | angkasabiruretail | abdestination | lms | tms)
 make pipeline SOURCE=abdestination
 make pipeline SOURCE=lms
+make pipeline SOURCE=tms
 make silver && make gold        # transformasi silver, lalu star schema gold
 make test                       # pytest (butuh stack hidup dan data raw)
 ```
@@ -82,7 +84,8 @@ select * from raw_table_angkasabiruretail.employees limit 20;
 
 ## 3. Tahapan pipeline
 
-Satu DAG per file di `sources/*.yaml` (`pipeline_angkasabiruretail`, `pipeline_angkasabiru`), enam task berurutan;
+Satu DAG per file di `sources/*.yaml` — lima DAG: `pipeline_angkasabiru`, `pipeline_angkasabiruretail`,
+`pipeline_abdestination`, `pipeline_lms`, `pipeline_tms` —, masing-masing enam task berurutan;
 task hanya berjalan bila task sebelumnya sukses. Gagal diulang otomatis 3 kali dengan jeda 5 menit.
 
 ![Enam tahap pipeline beserta hasil dan yang dicek bila gagal](docs/img/proses-2-tahapan.png)
@@ -110,11 +113,16 @@ Tiga lapis percobaan ulang:
 - **Manual** — tombol *Clear* (dengan *Downstream*) dihitung percobaan pertama: `extract_api` menarik ulang
   semua endpoint; `load_raw` hanya memuat ulang arsip run itu.
 
-**Mode sumber** (`ANGKASABIRURETAIL_SOURCE_MODE`, `ANGKASABIRU_SOURCE_MODE` di `.env`): `live` menarik lewat HTTP
+**Mode sumber** (`<SUMBER>_SOURCE_MODE` di `.env`, satu per sumber: `ANGKASABIRU_`, `ANGKASABIRURETAIL_`,
+`ABDESTINATION_`, `LMS_`, `TMS_`): `live` menarik lewat HTTP
 dari `*_API_BASE_URL` — sejak 15 November 2026 URL ini menunjuk instance mock; ganti ke URL asli (tersimpan
 sebagai komentar di `.env`) untuk kembali ke API produksi. `sample` membaca fixture offline
 `data/sample/<sumber>/*.json` langsung tanpa HTTP (PII, di luar git; segarkan dengan `make sample-refresh`) —
 tanpa pelengkap data mock. Endpoint `optional: true` yang 404 diarsipkan dan dimuat kosong, bukan kegagalan.
+
+**Variabel sumber TMS** di `.env` (pola sama dengan LMS): `TMS_SOURCE_MODE` (bawaan `live`),
+`TMS_API_BASE_URL` (bawaan `http://mock-tms:8000/api`), `TMS_API_KEY` (contoh `mock-tms-key`; nilai yang sama
+diteruskan ke instance mock), `TMS_MINIO_BUCKET` (bawaan `tms-raw`), dan port host `MOCK_TMS_PORT` (bawaan `8105`).
 
 **Catatan API** — Angkasa Biru Retail: autentikasi header `api_key`/`x-api-key`; endpoint `companies` di API asli sering
 HTTP 522 dan biasanya berhasil pada percobaan berikutnya. Angkasa Biru: bearer login (`POST /login`, token
@@ -133,11 +141,14 @@ Aliran model dbt dari bahan baku sampai gold:
 ### 4.1 Layer raw: apa adanya dan lengkap
 
 > Setiap endpoint API didaftarkan di `sources/<sumber>.yaml` dan diproses sampai `raw_` dan `raw_table_`,
-> sesuai jumlahnya (Angkasa Biru 29, Angkasa Biru Retail 39, Angkasa Biru Destination 29, LMS 1 — termasuk endpoint yang hanya ada di instance mock:
+> sesuai jumlahnya (Angkasa Biru 29, Angkasa Biru Retail 39, Angkasa Biru Destination 29, LMS 1, TMS 1 — total 99, termasuk endpoint yang hanya ada di instance mock:
 > `getCompetencyAssessment` dan `competency_assessments`), tanpa dipilih-pilih. **Learning agility datang dari
 > sumber sistem terpisah `lms`** (katalog BRD 4.4: sumbernya LMS, bukan HRIS per perusahaan): satu endpoint
 > lintas perusahaan dengan `company_code` AB/ABR/ABD per baris; staging tiap perusahaan menyaringnya ke
-> `silver_<sumber>.learning_agility_assessment_<sumber>` sehingga struktur silver dan gold tidak berubah. Endpoint
+> `silver_<sumber>.learning_agility_assessment_<sumber>` sehingga struktur silver dan gold tidak berubah.
+> **Aspirasi karier datang dari sumber sistem `tms`** (Angkasa Biru TMS, sistem talenta grup; katalog BRD 5.1)
+> dengan pola yang sama: satu endpoint `aspirations` lintas perusahaan, disaring staging tiap perusahaan ke
+> `silver_<sumber>.career_aspiration_<sumber>`. Endpoint
 > kosong **tetap** didaftarkan dan tabelnya dibiarkan kosong. Memilih data adalah urusan pemetaan
 > transformasi, bukan layer raw.
 
@@ -147,15 +158,15 @@ tidak menghapus isi sebelumnya. Backfill manual: `make flatten SOURCE=<sumber>`.
 
 ### 4.2 Layer silver
 
-Satu tabel per entitas katalog BRD (23 entitas: bagian 2–3 + transaksi 4.1–4.5 termasuk `learning_history`,
-`learning_agility_assessment`, `competency_assessment`, `employee_secondary_assignment`) + `top_talent`,
-**per perusahaan**, dibangun dbt. Acuan struktur:
-`data_catalogue/resume/data-catalogue-rinjani-2.0-sesuai-brd.html` (lokal); acuan pemetaan:
-`data/refrence/mapping api to <perusahaan>.csv`. Entitas bagian 5 (eqs_score, nine_box_classification,
-talent_pool, dst.) adalah keluaran Rinjani (inbound) dan **tidak dimuat ke core** — EQS dan 9-Box justru
+Satu tabel per entitas katalog BRD (24 entitas: bagian 2–3 + transaksi 4.1–4.5 termasuk `learning_history`,
+`learning_agility_assessment`, `competency_assessment`, `employee_secondary_assignment`, ditambah
+`career_aspiration` dari bagian 5.1) + `top_talent`, **per perusahaan**, dibangun dbt. Acuan struktur:
+`data_catalogue/resume/data-catalogue-2.0-sesuai-brd.html` (lokal); acuan pemetaan:
+`data/refrence/mapping api to <perusahaan>.csv`. Entitas bagian 5 lainnya (eqs_score, nine_box_classification,
+talent_pool, dst.) adalah keluaran Angkasa Biru TMS (inbound) dan **tidak dimuat ke core** — EQS dan 9-Box justru
 dihitung DWH di gold dari rumus lampiran 7.1–7.2.
 
-![ERD silver: 24 tabel per perusahaan](docs/img/erd-silver.png)
+![ERD silver: 25 tabel per perusahaan](docs/img/erd-silver.png)
 
 Prinsip model staging (`dbt/models/staging/<sumber>/`, makro `dbt/macros/raw_kolom.sql`):
 
@@ -224,13 +235,20 @@ Star schema gabungan di Data Hub, sesuai katalog BRD 6.2: **3 fact + 10 dimensi*
 - **EQS dan 9-Box dihitung DWH** (lampiran katalog 7.1–7.2), dihidupkan kembali 15 November 2026 setelah
   masukannya dilengkapi instance mock. Komponen EQS: kinerja 25% (rata-rata 3 tahun, dinormalkan per
   sumber: AP skala 0–120, Angkasa Biru Retail 0–5), kompetensi/job fit 20%, pengalaman 15% (masa kerja di job family
-  yang sama, 10 tahun = 100), aspirasi 30% (**masih NULL** — menunggu `career_aspiration` dari Rinjani),
+  yang sama, 10 tahun = 100), aspirasi 30% (terisi sejak 21 November 2026 dari `career_aspiration` Angkasa Biru
+  TMS: komposit empat sumber aspirasi berbobot individual 20, supervisor 20, job holder 30, unit 30 —
+  dijumlahkan per posisi target, lalu diambil target bernilai tertinggi; pegawai tanpa aspirasi = 0),
   pelatihan 10% (completion rate pelatihan wajib), rekam jejak 5% (0 bila ada disiplin aktif).
-  `eqs_score` = rata-rata tertimbang komponen yang tersedia (bobot dinormalkan ulang). Sumbu 9-Box:
+  Keenam komponen kini terisi; `eqs_score` = rata-rata tertimbang komponen yang tersedia (bobot dinormalkan
+  ulang bila ada yang kosong). Sumbu 9-Box:
   performance = 95% kinerja + 5% rekam jejak; capacity = 80% job fit + 20% learning agility; tingkat
   < 60 Low, 60–79 Medium, ≥ 80 High; tanpa data masuk `nine_box_key` 0 (Unclassified).
 - `fact_employee_snapshot` kini juga membawa `job_fit_score`, `learning_agility_score`, dan
   `is_mandatory_training_complete` (katalog BRD 6.2).
+- **Talent Mobility dikenali lewat identitas**, bukan `employment_type`: `fact_talent_mobility` mencocokkan
+  orang yang sama (`id_nik` identik) di dua perusahaan — baris non-aktif adalah perusahaan asal, baris aktif
+  perusahaan sekarang; `id_nik` tidak ikut dipublikasikan. API Angkasa Biru hanya mengirim `employment_type`
+  `PKWTT` dan `PKWT` (pegawai Talent Mobility berstatus `PKWTT`).
 
 Sumber baru ikut masuk gold dengan menambahkannya di `vars.gold_sources` (`dbt/dbt_project.yml`).
 
@@ -286,10 +304,47 @@ dan tambahkan blok `dbt:` di YAML sumber; (4) untuk gold: daftarkan di `vars.gol
 
 ## 7. Pengujian dan saat ada masalah
 
-`make test` menjalankan ±340 pemeriksaan pytest terhadap data terpasang (butuh stack hidup). dbt juga
+`make test` menjalankan ±365 pemeriksaan pytest terhadap data terpasang (butuh stack hidup). dbt juga
 menguji dirinya saat `transform_silver`/`build_gold`: uji kunci (`unique`, `not_null`) menggagalkan run,
 uji relasi/nilai berstatus WARN. Dengan data sintetis yang konsisten penuh, kondisi normalnya 0 WARN
 (saat memakai API asli dulu ada 4-5 WARN bawaan kualitas sumber).
+
+### Penanganan error
+
+Prinsipnya: data di warehouse tidak pernah setengah jadi. Bila sebuah run gagal, Postgres tetap berisi
+hasil run sukses sebelumnya, dan data baru yang sempat terambil hanya tertahan di arsip MinIO sampai
+run-nya berhasil.
+
+- **Satu endpoint = semua atau tidak sama sekali.** Konektor menarik satu endpoint sampai tuntas di
+  memori (semua halaman, atau semua NIK untuk endpoint fan-out) baru menulisnya sebagai satu file ke
+  MinIO. Galat di tengah (mis. halaman 5 dari 10) berarti tidak ada file yang ditulis, dan statusnya
+  tercatat `failed` beserta pesannya di `raw_<sumber>._ingestion_log`.
+- **Antar endpoint tidak saling menghentikan.** Endpoint lain tetap ditarik dan diarsipkan; task
+  `extract_api` baru dinyatakan gagal setelah semuanya dicoba, bila ada satu saja yang gagal.
+- **Percobaan ulang berlapis.** Konektor mengulang galat sementara (koneksi putus, timeout, galat
+  server) beberapa kali dengan jeda bertambah (`retries`, `retry_backoff_seconds` di YAML sumber).
+  Airflow mengulang task sampai 3 kali dengan jeda 5 menit, dan percobaan ulang hanya menarik endpoint
+  yang belum terarsip pada run itu, bukan mengulang semuanya.
+- **Status tiap endpoint** di `_ingestion_log`: `failed` (ekstraksi gagal, tidak ada arsip),
+  `extracted` (sudah di MinIO, belum dimuat), `load_failed` (arsip ada, muat ke Postgres gagal),
+  `success`.
+
+Bila task tetap gagal setelah semua percobaan:
+
+| Gagal di task | Yang terjadi pada data |
+|---|---|
+| `extract_api` | Task berikutnya tidak dijalankan. Postgres (raw, raw_table, silver, gold) tidak tersentuh; endpoint yang sempat berhasil hanya ada di MinIO |
+| `load_raw` | Tiap endpoint dimuat dalam satu transaksi, jadi yang gagal di-rollback penuh. Percobaan ulang membaca dari MinIO, tidak memanggil API lagi |
+| `flatten_raw_tables` | Tiap tabel diisi ulang (truncate + insert) dalam satu transaksi; silver dan gold tidak dijalankan |
+| `transform_silver` / `build_gold` | Model yang gagal dan turunannya dilewati; tabel yang sudah ada tetap berisi data sebelumnya |
+
+Dua hal yang perlu diwaspadai:
+
+- Bila `flatten_raw_tables` gagal di tengah, tabel `raw_table` yang sudah diproses berisi batch baru
+  sedangkan sisanya masih batch lama. Silver dan gold tetap data lama, dan task aman diulang.
+- Lewat perintah manual (`make pipeline`), endpoint yang berhasil langsung dimuat ke raw walaupun
+  endpoint lain gagal; menjalankan `make flatten` sesudahnya membuat `raw_table` berisi campuran batch.
+  Lewat DAG hal ini tidak terjadi karena kegagalan extract menahan seluruh tahap load.
 
 Urutan pengecekan saat ada masalah:
 
@@ -310,9 +365,9 @@ docker exec angkasabiru-airflow-scheduler sh -c 'cd /opt/airflow/project && \
   python -m ingestion.run_ingest --source angkasabiruretail --phase load --run-key "<run_id>"'
 ```
 
-Bila mock bermasalah: `curl localhost:8101/health` / `localhost:8102/health`, lalu
+Bila mock bermasalah: `curl localhost:8101/health` (port 8101–8105, satu per instance mock), lalu
 `docker logs angkasabiru-mock-<sumber>`; setelah mengubah `mock_api/`, bangun ulang dengan
-`docker compose up -d --build mock-angkasabiru mock-angkasabiruretail`. Data mock deterministik — dua kali start
+`docker compose up -d --build mock-angkasabiru mock-angkasabiruretail mock-abdestination mock-lms mock-tms`. Data mock deterministik — dua kali start
 menghasilkan data yang sama, jadi run ulang pipeline aman.
 
 Yang sebaiknya tidak dilakukan: `make reset` / `docker compose down -v` (menghapus registry `id_employee`,

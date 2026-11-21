@@ -7,7 +7,7 @@ sources:
       - name: master_data_angkasabiruretail
         description: "Master data: kolom NIK dan Top Talent, baris Angkasa Biru Retail saja; sumber penanda top talent."
   - name: raw_abr
-    description: "PT Angkasa Biru Retail (API Rinjani): payload API yang sudah didatarkan (kunci -> kolom teks), diisi truncate-insert tiap run."
+    description: "PT Angkasa Biru Retail (API HRIS ABR): payload API yang sudah didatarkan (kunci -> kolom teks), diisi truncate-insert tiap run."
     schema: raw_table_angkasabiruretail
     tables:
       - name: companies

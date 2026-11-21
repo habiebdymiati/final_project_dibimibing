@@ -5,15 +5,17 @@
     kinerja    25%  rata-rata skor kinerja 3 tahun, dinormalkan per sumber (AP skala 0-120, Angkasa Biru Retail 0-5)
     kompetensi 20%  job_fit_score periode terbaru (competency_assessment)
     pengalaman 15%  masa kerja pada job family yang sama; 120 bulan (10 tahun) dihitung 100
-    aspirasi   30%  career_aspiration milik Rinjani (inbound) -> BELUM ADA sumbernya, NULL
+    aspirasi   30%  komposit 4 sumber aspirasi karier (career_aspiration dari Angkasa Biru TMS, katalog BRD 5.1):
+                    individual 20 + supervisor 20 + job_holder 30 + unit 30 pada target yang sama, diambil target
+                    bernilai tertinggi; pegawai tanpa aspirasi = 0, perusahaan tanpa data aspirasi sama sekali = NULL
     pelatihan  10%  completion rate pelatihan wajib/penjenjangan (learning_history.is_mandatory)
     rekam_jejak 5%  100 tanpa catatan disiplin aktif, 0 bila ada
-  eqs_score = rata-rata tertimbang komponen yang TERSEDIA (bobot dinormalkan ulang; aspirasi menunggu Rinjani).
+  eqs_score = rata-rata tertimbang komponen yang TERSEDIA (bobot dinormalkan ulang bila ada komponen yang kosong).
 
   Sumbu 9-Box (lampiran 7.2): performance = 95% kinerja + 5% rekam jejak; capacity = 80% kompetensi + 20% learning
   agility (bobot dinormalkan ulang bila salah satu kosong). Tingkat: < 60 Low, 60-79 Medium, >= 80 High;
   tanpa data sama sekali masuk nine_box_key 0 (Unclassified).
-  Penomoran sel mengikuti kisi acuan Rinjani (lihat dim_nine_box): per kolom performance dari kiri-bawah,
+  Penomoran sel mengikuti kisi acuan 9-Box (lihat dim_nine_box): per kolom performance dari kiri-bawah,
   1 Unfit ... 9 High Potential.
 
   Grain: satu baris per pegawai per period_key; run pada periode yang sama menimpa baris periode itu saja.
@@ -34,7 +36,7 @@ with metrik as (
            end as kinerja,
            least(100, job_fit_score)                                        as kompetensi,
            least(100, tenure_in_job_family_months / 120.0 * 100)            as pengalaman,
-           cast(null as numeric)                                            as aspirasi,
+           case when ada_data_aspirasi then coalesce(aspiration_score, 0) end as aspirasi,
            pct_mandatory_training                                           as pelatihan,
            case when has_active_disciplinary then 0 else 100 end::numeric   as rekam_jejak
     from {{ ref('int_employee_metrics') }}

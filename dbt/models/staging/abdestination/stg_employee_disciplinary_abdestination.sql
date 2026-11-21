@@ -1,4 +1,4 @@
-{# Mapping ABD: employee_disciplinary TIDAK punya sumber pada API NATA RINJANI -> tabel terbentuk tanpa baris. #}
+{# Mapping ABD: employee_disciplinary TIDAK punya sumber pada API HRIS ABD -> tabel terbentuk tanpa baris. #}
 select
     cast(null as varchar) as id_employee,
     cast(null as text)    as disciplinary_type,

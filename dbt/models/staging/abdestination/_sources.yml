@@ -1,7 +1,7 @@
 version: 2
 sources:
   - name: raw_abd
-    description: "PT Angkasa Biru Destinasi (NATA RINJANI): payload API yang sudah didatarkan."
+    description: "PT Angkasa Biru Destinasi (HRIS ABD): payload API yang sudah didatarkan."
     schema: raw_table_abdestination
     tables:
       - name: company_types

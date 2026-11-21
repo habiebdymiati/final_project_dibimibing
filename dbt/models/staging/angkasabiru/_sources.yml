@@ -1,7 +1,7 @@
 version: 2
 sources:
   - name: raw_ab
-    description: "Angkasa Biru (SAPATH): payload API yang sudah didatarkan (kunci -> kolom teks), diisi truncate-insert tiap run."
+    description: "Angkasa Biru (HRIS AB): payload API yang sudah didatarkan (kunci -> kolom teks), diisi truncate-insert tiap run."
     schema: raw_table_angkasabiru
     tables:
       - name: units

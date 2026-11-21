@@ -4,7 +4,7 @@ import pytest
 
 from .conftest import query, scalar
 
-DOMAIN = {'employee_profile': {'employment_status': ['aktif', 'tidak aktif']}, 'employee_identification': {'gender': ['L', 'P'], 'employment_type': ['PKWTT', 'PKWT', 'Non Pegawai', 'Talent Mobility']}, 'employee_family_member': {'gender': ['L', 'P'], 'relationship_type': ['Anak', 'Anak Angkat', 'Anak Tiri', 'Pasangan', 'Ayah', 'Ibu', 'Saudara', 'Paman', 'Lainnya']}, 'employee_contract': {'contract_type': ['PKWTT', 'PKWT'], 'contract_status': ['aktif', 'berakhir']}, 'employee_leave_history': {'leave_type': ['Cuti', 'Izin'], 'leave_status': ['Disetujui', 'Disetujui Atasan', 'Diajukan']}, 'employee_performance_history': {'performance_rating': ['Partially Successful', 'Successful', 'Excellence', 'Outstanding', 'Unsuccessful']}, 'employee_education_history': {'education_degree_type': ['TK', 'SD', 'SLTP', 'SLTA', 'SMK', 'D1', 'D2', 'D3', 'D4', 'S1', 'S2', 'S3', 'Profesi', 'Non Formal']}, 'employee_disciplinary': {'disciplinary_type': ['RINGAN', 'SEDANG', 'BERAT']}, 'employee_assignment_history': {'assignment_name': ['Pelaksana Tugas (PLT)', 'Pejabat Pengganti Sementara (PGS)', 'Pelaksana Harian (PLH)']}, 'employee_address': {'address_type': ['Alamat Tetap']}}
+DOMAIN = {'employee_profile': {'employment_status': ['aktif', 'tidak aktif']}, 'employee_identification': {'gender': ['L', 'P'], 'employment_type': ['PKWTT', 'PKWT', 'Non Pegawai', 'Talent Mobility']}, 'employee_family_member': {'gender': ['L', 'P'], 'relationship_type': ['Anak', 'Anak Angkat', 'Anak Tiri', 'Pasangan', 'Ayah', 'Ibu', 'Saudara', 'Paman', 'Lainnya']}, 'employee_contract': {'contract_type': ['PKWTT', 'PKWT'], 'contract_status': ['aktif', 'berakhir']}, 'employee_leave_history': {'leave_type': ['Cuti', 'Izin'], 'leave_status': ['Disetujui', 'Disetujui Atasan', 'Diajukan']}, 'employee_performance_history': {'performance_rating': ['Partially Successful', 'Successful', 'Excellence', 'Outstanding', 'Unsuccessful']}, 'employee_education_history': {'education_degree_type': ['TK', 'SD', 'SLTP', 'SLTA', 'SMK', 'D1', 'D2', 'D3', 'D4', 'S1', 'S2', 'S3', 'Profesi', 'Non Formal']}, 'employee_disciplinary': {'disciplinary_type': ['RINGAN', 'SEDANG', 'BERAT']}, 'employee_assignment_history': {'assignment_name': ['Pelaksana Tugas (PLT)', 'Pejabat Pengganti Sementara (PGS)', 'Pelaksana Harian (PLH)']}, 'employee_address': {'address_type': ['Alamat Tetap']}, 'career_aspiration': {'aspiration_source': ['individual', 'supervisor', 'job_holder', 'unit']}}
 
 
 def _sumber(dwh):
@@ -28,6 +28,19 @@ def test_struktur_kolom_dan_tipe_sama_antar_sumber(dwh, sumber):
     acuan = per[sumber[0]]
     for s in sumber[1:]:
         assert per[s] == acuan, f"{s}: {sorted(per[s] ^ acuan)[:10]}"
+
+
+def test_career_aspiration_berkolom_katalog_di_semua_sumber(dwh, sumber):
+    """career_aspiration (katalog 5.1, dari Angkasa Biru TMS) ada di setiap perusahaan: field katalog berurutan,
+    disusul kolom teknis DWH; tanggal aspirasi bertipe date."""
+    for s in sumber:
+        kolom = query(dwh, """select column_name, data_type from information_schema.columns
+                              where table_schema = %s and table_name = %s order by ordinal_position""",
+                      (f"silver_{s}", f"career_aspiration_{s}"))
+        assert [k for k, _ in kolom] == ["id_employee", "aspiration_source", "id_target_position", "id_target_job_family",
+                                         "dt_aspiration", "aspiration_notes", "dwh_source_system", "dwh_batch_id",
+                                         "dwh_extracted_at", "dwh_loaded_at"], s
+        assert dict(kolom)["dt_aspiration"] == "date", s
 
 
 @pytest.mark.parametrize("entitas,kolom,nilai", [(e, k, v) for e, ks in DOMAIN.items() for k, v in ks.items()])

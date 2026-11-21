@@ -1,0 +1,7 @@
+version: 2
+sources:
+  - name: raw_tms
+    description: "Angkasa Biru TMS: aspirasi karier lintas perusahaan (company_code AB/ABR/ABD per baris)."
+    schema: raw_table_tms
+    tables:
+      - name: career_aspirations

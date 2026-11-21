@@ -65,7 +65,7 @@ models:
       - {name: is_in_talent_pool, tests: [not_null]}
 
   - name: fact_talent_mobility
-    description: Pegawai diperbantukan antar perusahaan grup; satu baris per orang (aktif di perusahaan tujuan).
+    description: Pegawai diperbantukan antar perusahaan grup, dikenali dari nomor KTP yang sama di dua perusahaan (non-aktif di asal, aktif di tujuan); satu baris per orang.
     columns:
       - name: id_employee
         tests: [unique, not_null, {relationships: {to: ref('dim_employee'), field: employee_key}}]

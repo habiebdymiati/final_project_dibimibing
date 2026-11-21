@@ -1,18 +1,19 @@
 {#
-  Pegawai Talent Mobility (diperbantukan antar perusahaan grup): orang yang sama — dikenali lewat
-  nomor KTP (id_nik) yang identik — tercatat di dua perusahaan: non-aktif di perusahaan ASAL
+  Pegawai Talent Mobility (diperbantukan antar perusahaan grup), dikenali dari IDENTITAS: orang yang
+  sama — nomor KTP (id_nik) identik — tercatat di dua perusahaan berbeda: non-aktif di perusahaan ASAL
   (tinggal record history, riwayat posisinya ditutup pada tanggal pindah) dan aktif di perusahaan
-  TUJUAN dengan employment_type 'Talent Mobility' (kontraknya PKWTT). Grain: satu baris per orang.
+  TUJUAN. employment_type tidak dipakai sebagai penanda: pegawai Talent Mobility berstatus PKWTT,
+  sama seperti pegawai tetap lainnya. Grain: satu baris per orang.
   id_nik sengaja TIDAK ikut dipublikasikan ke mart.
 #}
 with identitas as (
-    {{ dari_silver('employee_identification', 'id_employee, id_nik, dt_start_work, employment_type') }}
+    {{ dari_silver('employee_identification', 'id_employee, id_nik, dt_start_work') }}
 ),
 profil as (
     {{ dari_silver('employee_profile', 'id_employee, full_name, employment_status') }}
 ),
 gabung as (
-    select i.id_nik, i.kode_sumber, i.id_employee, i.dt_start_work, i.employment_type,
+    select i.id_nik, i.kode_sumber, i.id_employee, i.dt_start_work,
            p.full_name, p.employment_status
     from identitas i
     join profil p using (id_employee)
@@ -22,7 +23,7 @@ asal as (
     select * from gabung where employment_status <> 'aktif'
 ),
 tujuan as (
-    select * from gabung where employment_status = 'aktif' and employment_type = 'Talent Mobility'
+    select * from gabung where employment_status = 'aktif'
 )
 select
     t.id_employee                       as id_employee,

@@ -43,6 +43,11 @@
     {{ raw_kolom('lms', tabel, kolom, alias) }}
 {%- endmacro %}
 
+{# Singkatan untuk sumber Angkasa Biru TMS (sistem talenta grup lintas perusahaan). #}
+{% macro tms(tabel, kolom, alias='r') -%}
+    {{ raw_kolom('tms', tabel, kolom, alias) }}
+{%- endmacro %}
+
 {# Singkatan untuk sumber Angkasa Biru Destinasi. #}
 {% macro abd(tabel, kolom, alias='r') -%}
     {{ raw_kolom('abdestination', tabel, kolom, alias) }}

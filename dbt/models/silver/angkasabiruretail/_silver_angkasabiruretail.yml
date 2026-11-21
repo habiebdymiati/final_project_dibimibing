@@ -1,7 +1,7 @@
 version: 2
 
 # Tabel silver Angkasa Biru Retail: silver_angkasabiruretail.<entitas>_angkasabiruretail, mengikuti struktur Data Catalogue versi efisien -
-# Mapping Field API (bagian 2-4). Acuan pemetaan: data/refrence/mapping api to angkasabiruretail.csv.
+# Mapping Field API (bagian 2-4 dan 5.1). Acuan pemetaan: data/refrence/mapping api to angkasabiruretail.csv.
 # Uji kunci utama menggagalkan run; uji relasi berstatus peringatan karena kualitas rujukan di sumber belum sempurna.
 models:
   - name: top_talent_angkasabiruretail
@@ -168,3 +168,19 @@ models:
     columns:
       - {name: id_secondary_assignment, tests: [unique, not_null]}
       - {name: id_employee, tests: [not_null]}
+  - name: career_aspiration_angkasabiruretail
+    columns:
+      - name: id_employee
+        tests:
+          - not_null
+          - relationships: {to: ref('employee_profile_angkasabiruretail'), field: id_employee, config: {severity: warn}}
+      - name: aspiration_source
+        tests:
+          - not_null
+          - accepted_values: {values: ['individual', 'supervisor', 'job_holder', 'unit'], config: {severity: warn}}
+      - name: id_target_position
+        tests:
+          - relationships: {to: ref('position_master_angkasabiruretail'), field: id_position_master, config: {severity: warn}}
+      - name: id_target_job_family
+        tests:
+          - relationships: {to: ref('job_family_angkasabiruretail'), field: id_job_family, config: {severity: warn}}

@@ -1,7 +1,8 @@
 version: 2
 
-# Tabel silver Angkasa Biru Destinasi: silver_abdestination.<entitas>_abdestination (API NATA RINJANI,
-# field sudah bergaya katalog sehingga pemetaannya tipis). Uji kunci menggagalkan run.
+# Tabel silver Angkasa Biru Destinasi: silver_abdestination.<entitas>_abdestination (API HRIS ABD,
+# field sudah bergaya katalog sehingga pemetaannya tipis). Uji kunci menggagalkan run; uji relasi dan
+# daftar nilai berstatus peringatan.
 models:
   - name: top_talent_abdestination
     columns:
@@ -82,3 +83,19 @@ models:
     columns:
       - {name: id_employee, tests: [not_null]}
       - {name: job_fit_score, tests: [not_null]}
+  - name: career_aspiration_abdestination
+    columns:
+      - name: id_employee
+        tests:
+          - not_null
+          - relationships: {to: ref('employee_profile_abdestination'), field: id_employee, config: {severity: warn}}
+      - name: aspiration_source
+        tests:
+          - not_null
+          - accepted_values: {values: ['individual', 'supervisor', 'job_holder', 'unit'], config: {severity: warn}}
+      - name: id_target_position
+        tests:
+          - relationships: {to: ref('position_master_abdestination'), field: id_position_master, config: {severity: warn}}
+      - name: id_target_job_family
+        tests:
+          - relationships: {to: ref('job_family_abdestination'), field: id_job_family, config: {severity: warn}}

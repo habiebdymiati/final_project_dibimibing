@@ -12,8 +12,8 @@ flowchart TB
         REG["<b>registry_id_employee</b><br/>incremental: hanya menambah NIP baru"]:::pendukung
         INOM["<b>int_nominatif</b> (Angkasa Biru)<br/>kode dipetakan ke nama, posisi dicocokkan"]:::silver
         POS["<b>int_posisi_terkini</b> (Angkasa Biru)<br/>posisi terakhir dan asal nilainya:<br/>sumber_area, sumber_directorate, sumber_org_group"]:::silver
-        STG["<b>stg_#lt;entitas#gt;_#lt;sumber#gt;</b> (24 view)<br/>ab(), abr(), abd(), lms(): kolom tidak ada di raw menjadi NULL, bukan error<br/>ke_tanggal(), baku(): format dan nilai baku"]:::silver
-        SIL["<b>#lt;entitas#gt;_#lt;sumber#gt;</b> (24 tabel di silver_#lt;sumber#gt;)<br/>Tes unique, not_null gagal: run berhenti<br/>Tes relationships, accepted_values gagal: hanya WARN"]:::silver
+        STG["<b>stg_#lt;entitas#gt;_#lt;sumber#gt;</b> (25 view)<br/>ab(), abr(), abd(), lms(), tms(): kolom tidak ada di raw menjadi NULL, bukan error<br/>ke_tanggal(), baku(): format dan nilai baku"]:::silver
+        SIL["<b>#lt;entitas#gt;_#lt;sumber#gt;</b> (25 tabel di silver_#lt;sumber#gt;)<br/>Tes unique, not_null gagal: run berhenti<br/>Tes relationships, accepted_values gagal: hanya WARN"]:::silver
     end
 
     FDW["<b>python -m ingestion.fdw_silver</b><br/>fdw_silver_#lt;sumber#gt;: foreign table cermin silver, dibuat ulang tiap run"]:::kerja

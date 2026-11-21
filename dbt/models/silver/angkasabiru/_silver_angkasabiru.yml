@@ -1,7 +1,7 @@
 version: 2
 
 # Tabel silver Angkasa Biru: silver.<entitas>_angkasabiru, mengikuti struktur Data Catalogue versi efisien -
-# Mapping Field API (bagian 2-4). Akhiran _angkasabiru menandai pemilik datanya.
+# Mapping Field API (bagian 2-4 dan 5.1). Akhiran _angkasabiru menandai pemilik datanya.
 # Uji di bawah menjaga kunci utama: gagal uji = run gagal, supaya data kembar tidak lolos diam-diam.
 # Uji relasi (relationships) berstatus peringatan karena kualitas rujukan di sumber belum sempurna.
 models:
@@ -158,3 +158,19 @@ models:
     columns:
       - {name: id_secondary_assignment, tests: [unique, not_null]}
       - {name: id_employee, tests: [not_null]}
+  - name: career_aspiration_angkasabiru
+    columns:
+      - name: id_employee
+        tests:
+          - not_null
+          - relationships: {to: ref('employee_profile_angkasabiru'), field: id_employee, config: {severity: warn}}
+      - name: aspiration_source
+        tests:
+          - not_null
+          - accepted_values: {values: ['individual', 'supervisor', 'job_holder', 'unit'], config: {severity: warn}}
+      - name: id_target_position
+        tests:
+          - relationships: {to: ref('position_master_angkasabiru'), field: id_position_master, config: {severity: warn}}
+      - name: id_target_job_family
+        tests:
+          - relationships: {to: ref('job_family_angkasabiru'), field: id_job_family, config: {severity: warn}}

@@ -1,5 +1,5 @@
 flowchart TB
-    MULAI(["<b>Pemicu</b>: jadwal harian 07.00 WIB (00.00 UTC) atau tombol Trigger DAG. Satu DAG per sumber: pipeline_angkasabiru dan pipeline_angkasabiruretail"]):::pemicu
+    MULAI(["<b>Pemicu</b>: jadwal harian 07.00 WIB (00.00 UTC) atau tombol Trigger DAG. Satu DAG per sumber (lima DAG): pipeline_&lt;sumber&gt;"]):::pemicu
 
     subgraph T1["TAHAP 1: check_connections"]
         direction LR

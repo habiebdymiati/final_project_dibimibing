@@ -28,6 +28,7 @@ sources:
       - name: learning_agility_assessment_angkasabiru
       - name: competency_assessment_angkasabiru
       - name: employee_secondary_assignment_angkasabiru
+      - name: career_aspiration_angkasabiru
   - name: fdw_angkasabiruretail
     schema: fdw_silver_angkasabiruretail
     tables:
@@ -55,6 +56,7 @@ sources:
       - name: learning_agility_assessment_angkasabiruretail
       - name: competency_assessment_angkasabiruretail
       - name: employee_secondary_assignment_angkasabiruretail
+      - name: career_aspiration_angkasabiruretail
   - name: fdw_abdestination
     schema: fdw_silver_abdestination
     tables:
@@ -82,3 +84,4 @@ sources:
       - name: learning_agility_assessment_abdestination
       - name: competency_assessment_abdestination
       - name: employee_secondary_assignment_abdestination
+      - name: career_aspiration_abdestination

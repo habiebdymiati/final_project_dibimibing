@@ -1,9 +1,10 @@
 flowchart TB
     subgraph SUMBER["SUMBER DATA"]
-        API1["<b>Mock API Angkasa Biru</b><br/>tiruan SAPATH: 29 endpoint, login bearer<br/>fixture sample + pelengkap data"]:::api
-        API2["<b>Mock API Angkasa Biru Retail</b><br/>tiruan Rinjani: 39 endpoint, api_key<br/>fixture sample + pelengkap data"]:::api
-        API3["<b>Mock API Angkasa Biru Destination</b><br/>tiruan NATA RINJANI: 29 endpoint, bearer statis<br/>data sintetis penuh"]:::api
-        API4["<b>Mock API Angkasa Biru LMS</b><br/>sistem grup: learning agility lintas perusahaan<br/>1 endpoint, x-api-key"]:::api
+        API1["<b>Mock API Angkasa Biru</b><br/>tiruan HRIS AB: 29 endpoint, login bearer<br/>fixture sample + pelengkap data"]:::api
+        API2["<b>Mock API Angkasa Biru Retail</b><br/>tiruan HRIS ABR: 39 endpoint, api_key<br/>fixture sample + pelengkap data"]:::api
+        API3["<b>Mock API Angkasa Biru Destination</b><br/>tiruan HRIS ABD: 29 endpoint, bearer statis<br/>data sintetis penuh"]:::api
+        API4["<b>Mock API Angkasa Biru LMS</b><br/>sistem grup: learning agility<br/>1 endpoint, x-api-key"]:::api
+        API5["<b>Mock API Angkasa Biru TMS</b><br/>sistem grup: aspirasi karier<br/>1 endpoint, x-api-key"]:::api
     end
     CSV["<b>Berkas CSV referensi (lokal, tidak masuk git)</b><br/>data/refrence/<br/>TMT karyawan, nominatif, master data"]:::lokal
 
@@ -16,7 +17,7 @@ flowchart TB
         SEED["<b>seed_#lt;sumber#gt;</b><br/>band, perusahaan, rating,<br/>pemetaan nilai baku"]:::pendukung
         REG["<b>registry_#lt;sumber#gt;</b><br/>id_employee tetap,<br/>tidak pernah dinomori ulang"]:::pendukung
         STG["<b>staging_#lt;sumber#gt;</b> (view)<br/>aturan pemetaan: stg_*, int_*"]:::silver
-        SIL["<b>silver_#lt;sumber#gt;</b> (tabel)<br/>24 tabel per perusahaan, sudah diharmonisasi"]:::silver
+        SIL["<b>silver_#lt;sumber#gt;</b> (tabel)<br/>25 tabel per perusahaan, sudah diharmonisasi"]:::silver
     end
 
     subgraph HUB["POSTGRES DATA HUB (angkasabiru_datahub, port 5434)"]
@@ -31,6 +32,7 @@ flowchart TB
     API2 -->|"extract_api"| MINIO
     API3 -->|"extract_api"| MINIO
     API4 -->|"extract_api"| MINIO
+    API5 -->|"extract_api"| MINIO
     MINIO -->|"load_raw"| RAW
     RAW -->|"flatten_raw_tables"| RT
     CSV -->|"transform_silver:<br/>load_reference"| REF

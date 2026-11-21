@@ -1,6 +1,6 @@
 # =============================================================================
-# Definisi sumber: PT Angkasa Biru Destinasi (API NATA RINJANI 2.0, read-only)
-# Berbasis koleksi Postman "NATA RINJANI 2.0 - Read-Only API": autentikasi bearer token statis,
+# Definisi sumber: PT Angkasa Biru Destinasi (API HRIS ABD, read-only)
+# Berbasis koleksi Postman Read-Only API sistem tersebut: autentikasi bearer token statis,
 # paginasi ?page=&per_page= (maksimum 500), path berkelompok /organization /employee /transaction.
 # ATURAN: daftar endpoint mengikuti API apa adanya dan lengkap sesuai jumlahnya. Endpoint yang
 # (masih) kosong TETAP didaftarkan. Dua endpoint terakhir tidak ada di koleksi Postman dan

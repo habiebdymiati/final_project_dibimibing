@@ -1,0 +1,31 @@
+# =============================================================================
+# Definisi sumber: Angkasa Biru TMS (Talent Management System, sistem talenta grup)
+# Katalog BRD 5.1: career_aspiration bersumber dari TMS, bukan HRIS per perusahaan.
+# Satu endpoint lintas perusahaan; tiap baris membawa company_code (AB/ABR/ABD) dan id pegawai
+# pada sistem perusahaan masing-masing. Transformasinya tetap per perusahaan di silver_<sumber>.
+# =============================================================================
+source: tms
+type: rest_api
+schedule: "@daily"
+
+mode: "${TMS_SOURCE_MODE:-live}"
+sample_dir: data/sample/tms
+
+api:
+  base_url: "${TMS_API_BASE_URL:-http://mock-tms:8000/api}"
+  timeout_seconds: 60
+  retries: 3
+  retry_backoff_seconds: 5
+  default_auth_header: x-api-key
+  api_key: "${TMS_API_KEY:-}"
+
+raw:
+  schema: raw_tms
+  minio_bucket: "${TMS_MINIO_BUCKET:-tms-raw}"
+  keep_batches: 7
+
+dbt:
+  select: "+tag:tms+"
+
+endpoints:
+  - {name: "career_aspirations", path: "/aspirations"}

@@ -35,13 +35,17 @@ x-pipeline-env: &pipeline-env
   ANGKASABIRURETAIL_API_BASE_URL: ${ANGKASABIRURETAIL_API_BASE_URL:-http://mock-angkasabiruretail:8000/api}
   ANGKASABIRURETAIL_API_KEY: ${ANGKASABIRURETAIL_API_KEY:-}
   ANGKASABIRURETAIL_SESSION_COOKIE: ${ANGKASABIRURETAIL_SESSION_COOKIE:-}
-  # Sumber Angkasa Biru (Angkasa Biru Airports / SAPATH)
+  # Sumber Angkasa Biru (Angkasa Biru Airports / HRIS AB)
   ANGKASABIRU_SOURCE_MODE: ${ANGKASABIRU_SOURCE_MODE:-live}
   ABDESTINATION_SOURCE_MODE: ${ABDESTINATION_SOURCE_MODE:-live}
   LMS_SOURCE_MODE: ${LMS_SOURCE_MODE:-live}
   LMS_API_BASE_URL: ${LMS_API_BASE_URL:-http://mock-lms:8000/api}
   LMS_API_KEY: ${LMS_API_KEY:-}
   LMS_MINIO_BUCKET: ${LMS_MINIO_BUCKET:-lms-raw}
+  TMS_SOURCE_MODE: ${TMS_SOURCE_MODE:-live}
+  TMS_API_BASE_URL: ${TMS_API_BASE_URL:-http://mock-tms:8000/api}
+  TMS_API_KEY: ${TMS_API_KEY:-}
+  TMS_MINIO_BUCKET: ${TMS_MINIO_BUCKET:-tms-raw}
   ABDESTINATION_API_BASE_URL: ${ABDESTINATION_API_BASE_URL:-http://mock-abdestination:8000/api/v1}
   ABDESTINATION_API_TOKEN: ${ABDESTINATION_API_TOKEN:-}
   ABDESTINATION_MINIO_BUCKET: ${ABDESTINATION_MINIO_BUCKET:-abdestination-raw}
@@ -306,6 +310,17 @@ services:
       TZ: ${TZ:-Asia/Jakarta}
     ports:
       - "${MOCK_LMS_PORT:-8104}:8000"
+
+  mock-tms:
+    build: mock_api
+    container_name: angkasabiru-mock-tms
+    environment:
+      MOCK_SOURCE: tms
+      API_PREFIX: /api
+      MOCK_API_KEY: ${TMS_API_KEY:-}
+      TZ: ${TZ:-Asia/Jakarta}
+    ports:
+      - "${MOCK_TMS_PORT:-8105}:8000"
 
   mock-angkasabiruretail:
     build: mock_api

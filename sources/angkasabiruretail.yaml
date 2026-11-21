@@ -1,5 +1,5 @@
 # =============================================================================
-# Definisi sumber: PT Angkasa Biru Retail (API Rinjani)
+# Definisi sumber: PT Angkasa Biru Retail (API HRIS ABR)
 # Satu file per sumber. Menambah sumber baru = menambah file YAML di folder ini.
 # ATURAN: daftar endpoint mengikuti API apa adanya dan lengkap sesuai jumlahnya. Endpoint yang
 # (masih) kosong TETAP didaftarkan: tabelnya dibentuk kosong di raw_ dan raw_table_, tidak dihapus.

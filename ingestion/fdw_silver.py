@@ -28,7 +28,7 @@ def sumber_silver() -> list:
 def run() -> list:
     dwh = pg_params("DWH")
     sumber = sumber_silver()
-    # sumber sistem (mis. lms) tidak punya schema silver sendiri: modelnya menumpang di silver perusahaan,
+    # sumber sistem (lms, tms) tidak punya schema silver sendiri: modelnya menumpang di silver perusahaan,
     # jadi hanya schema silver_<sumber> yang benar-benar berisi tabel yang dicerminkan ke Data Hub
     with psycopg2.connect(**dwh) as koneksi_dwh, koneksi_dwh.cursor() as cur:
         cur.execute("select distinct table_schema from information_schema.tables where table_schema like 'silver\\_%'")

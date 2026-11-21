@@ -11,6 +11,8 @@ create schema if not exists raw_angkasabiruretail;
 create schema if not exists raw_angkasabiru;
 create schema if not exists raw_lms;
 create schema if not exists raw_table_lms;
+create schema if not exists raw_tms;
+create schema if not exists raw_table_tms;
 create schema if not exists raw_abdestination;
 create schema if not exists raw_table_abdestination;
 create schema if not exists reference_abdestination;

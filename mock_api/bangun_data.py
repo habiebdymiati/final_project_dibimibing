@@ -1,5 +1,6 @@
 """
-Generator data SINTETIS penuh untuk instance API tiruan Angkasa Biru dan Angkasa Biru Retail.
+Generator data SINTETIS penuh untuk instance API tiruan grup Angkasa Biru: tiga HRIS perusahaan
+(Angkasa Biru, Angkasa Biru Retail, Angkasa Biru Destination) dan dua sistem grup (LMS, TMS).
 
 Sejak 15 November 2026 (keputusan penghapusan data asli): TIDAK ADA satu pun data pegawai sungguhan.
 Seluruh nama, NIK, tanggal, dan nilai dibangkitkan deterministik (seed tetap), sehingga:
@@ -127,7 +128,9 @@ def _agility(nik):
 # Sebagian kecil pegawai PKWTT diperbantukan antar perusahaan grup. Orangnya SAMA di dua perusahaan
 # (nama, tanggal lahir, jenis kelamin, KTP, NPWP): di perusahaan ASAL berstatus diperbantukan
 # (non-aktif; tinggal record history, riwayat posisinya ditutup pada tanggal pindah), di perusahaan
-# TUJUAN aktif dengan employment_type 'Talent Mobility' dan kontrak PKWTT. Karena gold menyaring
+# TUJUAN aktif dengan kontrak PKWTT. employment_type di tujuan: 'Talent Mobility' pada ABR dan ABD,
+# 'PKWTT' pada AB (API-nya hanya mengenal PKWTT dan PKWT); karena itu gold mengenali mereka dari
+# id_nik yang sama di dua perusahaan, bukan dari employment_type. Karena gold menyaring
 # employment_status = 'aktif', nama mereka hanya muncul sekali di gold: di perusahaan terakhir.
 MOBILITAS = [("AB", "ABR", 3), ("AB", "ABD", 3), ("ABR", "ABD", 2),
              ("ABR", "AB", 2), ("ABD", "AB", 1), ("ABD", "ABR", 1)]
@@ -314,7 +317,7 @@ def bangun_angkasabiru() -> dict:
                              "dt_start_work": tmt.isoformat(), "dt_appointed_employee": tmt.isoformat(),
                              "dt_grade_start": None,            # diisi dari baris riwayat posisi terakhir di bawah
                              "dt_retirement": _pensiun(lahir, 58).isoformat(),
-                             "employment_type": r.choice(["KP", "PGN", "DTG", "DPB", "PKWT"]),
+                             "employment_type": r.choice(["PKWTT", "PKWTT", "PKWTT", "PKWTT", "PKWT"]),
                              "home_phone": _ponsel(r),
                              "id_bpjs_kes": _digit(r, 13), "id_bpjs_tk": _digit(r, 11)})
         alamat.append({"nik_new": nik, "Alamat": f"Jl. {r.choice(BELAKANG)} No. {r.randrange(1, 200)}, {kota}",
@@ -448,7 +451,7 @@ def bangun_angkasabiru() -> dict:
                              "dt_start_work": tmt.isoformat(), "dt_appointed_employee": tmt.isoformat(),
                              "dt_grade_start": tmt.isoformat(),
                              "dt_retirement": _pensiun(o["lahir"], 58).isoformat(),
-                             "employment_type": "KP" if asal else "TMB",
+                             "employment_type": "PKWTT",       # Talent Mobility pasti PKWTT, di asal maupun tujuan
                              "home_phone": _ponsel(r),
                              "id_bpjs_kes": _digit(r, 13), "id_bpjs_tk": _digit(r, 11)})
         alamat.append({"nik_new": nik, "Alamat": f"Jl. {r.choice(BELAKANG)} No. {r.randrange(1, 200)}, {o['kota']}",
@@ -930,6 +933,56 @@ def bangun_lms() -> dict:
     return {"learning_agility_assessments": hasil}
 
 
+# ===================================================================== Angkasa Biru TMS
+# (sumber aspirasi, peluang pegawai punya baris dari sumber itu, tambahan peluang bagi top talent)
+SUMBER_ASPIRASI = [("individual", 0.70, 0.0), ("supervisor", 0.45, 0.30),
+                   ("job_holder", 0.25, 0.30), ("unit", 0.20, 0.35)]
+CATATAN_ASPIRASI = ["Sesuai latar belakang pendidikan dan pengalaman kerja.",
+                    "Bersedia ditempatkan di seluruh wilayah kerja.",
+                    "Perlu penguatan kompetensi kepemimpinan terlebih dahulu.",
+                    "Diproyeksikan siap dalam satu sampai dua tahun.",
+                    "Selaras dengan rencana pengembangan karier.",
+                    "Disarankan mengikuti program pengembangan talenta."]
+
+
+def bangun_tms() -> dict:
+    """Sistem talenta grup, Talent Management System (katalog BRD 5.1: career_aspiration). Satu endpoint
+    lintas perusahaan seperti LMS: setiap baris membawa company_code (AB/ABR/ABD), id pegawai pada sistem
+    perusahaan itu, dan posisi serta job family target dari master posisi perusahaan yang sama.
+    Aspirasi datang dari empat sumber (individual, supervisor, job_holder, unit), paling banyak satu baris
+    per pegawai per sumber; top talent lebih sering diaspirasikan atasan, pemegang jabatan, dan unit."""
+    hasil = []
+    for kode, data, profil, kunci, master, kunci_posisi, kunci_jf in (
+            ("AB", bangun_angkasabiru(), "employee_profile", "new_nip",
+             "position_master", "id_position_master", "id_job_family"),
+            ("ABR", bangun_angkasabiruretail(), "employee-profile", "old_nip",
+             "positions", "code_position", "code_job_family"),
+            ("ABD", bangun_abdestination(), "employee_profiles", "id_employee",
+             "position_masters", "id_position_master", "id_job_family")):
+        posisi = [(p[kunci_posisi], p[kunci_jf]) for p in data[master]]
+        top_talent = {b["NIK"] for b in data["_master_csv"] if b["Top Talent"] == "Ya"}
+        for pgw in data[profil]:
+            nik = pgw[kunci]
+            r = _rng("tms", kode, nik)
+            calon = r.sample(range(len(posisi)), 2)             # dua calon posisi target berbeda
+            # NIK pada master data ABR tidak membawa nol di depan
+            talenta = (str(int(nik)) if kode == "ABR" else nik) in top_talent
+            urut = 0
+            for sumber, peluang, tambahan in SUMBER_ASPIRASI:
+                if r.random() >= min(0.95, peluang + (tambahan if talenta else 0)):
+                    continue
+                id_posisi, id_jf = posisi[calon[0] if r.random() < 0.75 else calon[1]]
+                if sumber == "individual" and r.random() < 0.10:
+                    id_posisi = None                            # hanya menyebut job family
+                urut += 1
+                hasil.append({"id_aspiration": f"ASP-{kode}-{nik}-{urut}", "company_code": kode,
+                              "id_employee": nik, "aspiration_source": sumber,
+                              "id_target_position": id_posisi, "id_target_job_family": id_jf,
+                              "dt_aspiration": _tanggal(r, date(2025, 7, 1), date(2026, 9, 30)).isoformat(),
+                              "aspiration_notes": r.choice(CATATAN_ASPIRASI) if r.random() < 0.15 else None})
+    return {"career_aspirations": hasil}
+
+
 def _jamin_lengkap(profil, kunci, identifikasi, kunci_id, riwayat, kunci_riwayat, sumber):
     """Jaminan placeholder (16 Nov 2026): setiap pegawai punya jenis kelamin dan >= 1 riwayat posisi,
     sehingga tidak ada status 'tidak diketahui' di hilir. Gagal keras bila generator melanggarnya."""
@@ -945,7 +998,8 @@ def bangun(sumber: str, _folder_sample=None) -> dict:
     data = bangun_angkasabiru() if sumber == "angkasabiru" else \
         bangun_angkasabiruretail() if sumber == "angkasabiruretail" else \
         bangun_abdestination() if sumber == "abdestination" else \
-        bangun_lms() if sumber == "lms" else None
+        bangun_lms() if sumber == "lms" else \
+        bangun_tms() if sumber == "tms" else None
     if data is None:
         raise ValueError(f"Sumber mock tidak dikenal: {sumber}")
     return {k: v for k, v in data.items() if not k.startswith("_")}
@@ -969,7 +1023,8 @@ def main():
     arg = ap.parse_args()
     data_ap, data_snh, data_abd = bangun_angkasabiru(), bangun_angkasabiruretail(), bangun_abdestination()
     if arg.sample:
-        for sumber, data in (("angkasabiru", data_ap), ("angkasabiruretail", data_snh), ("abdestination", data_abd), ("lms", bangun_lms())):
+        for sumber, data in (("angkasabiru", data_ap), ("angkasabiruretail", data_snh), ("abdestination", data_abd),
+                             ("lms", bangun_lms()), ("tms", bangun_tms())):
             folder = Path(arg.sample) / sumber
             folder.mkdir(parents=True, exist_ok=True)
             for nama, baris in data.items():
@@ -989,7 +1044,7 @@ def main():
 
 
 
-# ===================================================================== Angkasa Biru Destination (NATA RINJANI)
+# ===================================================================== Angkasa Biru Destination (HRIS ABD)
 JUMLAH_ABD = 600
 
 DESTINASI = [("D01", "Kawasan Candi Prambanan"), ("D02", "Kawasan Candi Borobudur"),
@@ -998,7 +1053,7 @@ DESTINASI = [("D01", "Kawasan Candi Prambanan"), ("D02", "Kawasan Candi Borobudu
 
 
 def bangun_abdestination() -> dict:
-    """Sumber ketiga: destination management. API bergaya NATA RINJANI: field sudah memakai nama
+    """Sumber ketiga: destination management. API HRIS Angkasa Biru Destination: field sudah memakai nama
     katalog (id_employee, dt_*, fk_*) dan nilai yang sudah baku (L/P, PKWTT, aktif, Cuti), sehingga
     pemetaan silver tipis. Usia pensiun 56 tahun. Data learning agility + competency assessment
     tidak ada di koleksi Postman -> dilengkapi mock (konsisten dengan sumber lain)."""

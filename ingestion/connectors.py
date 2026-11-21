@@ -100,7 +100,7 @@ class RestApiConnector:
     def _auth_headers(self, endpoint: Dict[str, Any]) -> Dict[str, str]:
         auth = self.api.get("auth")
         if auth and auth.get("type") == "bearer_token":
-            # token statis (bukan hasil login), gaya API NATA RINJANI: Authorization: Bearer <token>
+            # token statis (bukan hasil login), gaya API HRIS Angkasa Biru Destination: Authorization: Bearer <token>
             if not auth.get("token"):
                 raise ExtractError("Token bearer kosong; isi token sumber di .env")
             return {"Authorization": f"Bearer {auth['token']}"}

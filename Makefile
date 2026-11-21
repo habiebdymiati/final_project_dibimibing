@@ -19,14 +19,17 @@ reset:         ## matikan stack dan HAPUS semua data (volume)
 build:         ## build image pipeline
 	docker compose build runner
 
-ingest:        ## dua fase: API -> arsip MinIO -> raw (Postgres DWH); SOURCE=angkasabiruretail|angkasabiru
+ingest:        ## dua fase: API -> arsip MinIO -> raw (Postgres DWH); SOURCE=angkasabiru|angkasabiruretail|abdestination|lms|tms
 	$(RUN) python -m ingestion.run_ingest --source $(or $(SOURCE),angkasabiruretail)
 
 ingest-all:    ## tarik seluruh sumber yang terdaftar di sources/*.yaml
-	$(RUN) python -m ingestion.run_ingest --source angkasabiruretail
 	$(RUN) python -m ingestion.run_ingest --source angkasabiru
+	$(RUN) python -m ingestion.run_ingest --source angkasabiruretail
+	$(RUN) python -m ingestion.run_ingest --source abdestination
+	$(RUN) python -m ingestion.run_ingest --source lms
+	$(RUN) python -m ingestion.run_ingest --source tms
 
-flatten:       ## raw_<sumber> (JSONB) -> raw_table_<sumber> (truncate + insert); SOURCE=angkasabiruretail|angkasabiru
+flatten:       ## raw_<sumber> (JSONB) -> raw_table_<sumber> (truncate + insert); SOURCE=angkasabiru|angkasabiruretail|abdestination|lms|tms
 	$(RUN) python -m ingestion.flatten --source $(or $(SOURCE),angkasabiruretail)
 
 pipeline:      ## extract + load + flatten satu sumber (sama dengan DAG Airflow); SOURCE=...

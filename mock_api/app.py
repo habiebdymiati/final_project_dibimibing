@@ -1,16 +1,19 @@
 """
-Instance API tiruan (mock) Angkasa Biru / Angkasa Biru Retail. Datanya SINTETIS penuh
-(dibangkitkan deterministik oleh bangun_data.py; tidak ada data pegawai sungguhan).
+Instance API tiruan (mock) grup Angkasa Biru: tiga HRIS perusahaan dan dua sistem grup (LMS, TMS).
+Datanya SINTETIS penuh (dibangkitkan deterministik oleh bangun_data.py; tidak ada data pegawai sungguhan).
 
 Meniru perilaku API asli sehingga konektor pipeline tidak perlu diubah:
-  Angkasa Biru : POST /login (bearer token), paginasi ?page=&limit=, pembungkus {"data": {"data": [...]}},
-                 getEmployeeIdentification difilter per ?nik= (fan-out per pegawai).
+  Angkasa Biru             : POST /login (bearer token), paginasi ?page=&limit=, pembungkus {"data": {"data": [...]}},
+                             getEmployeeIdentification difilter per ?nik= (fan-out per pegawai).
   Angkasa Biru Retail      : autentikasi header api_key / x-api-key, tanpa paginasi, pembungkus {"data": [...]}.
+  Angkasa Biru Destination : token bearer statis, paginasi ?page=&per_page=, pembungkus {"data": [...], "meta": {...}}.
+  Angkasa Biru LMS dan TMS : sistem grup lintas perusahaan, masing-masing satu endpoint (/assessments, /aspirations);
+                             autentikasi dan pembungkus sama dengan Angkasa Biru Retail.
 
 Konfigurasi lewat environment:
-  MOCK_SOURCE   angkasabiru | angkasabiruretail
-  API_PREFIX    /api/portalhc/v1 (AP) | /api (Angkasa Biru Retail)
-  MOCK_USERNAME, MOCK_PASSWORD (AP) / MOCK_API_KEY (Angkasa Biru Retail): kredensial yang diterima;
+  MOCK_SOURCE   angkasabiru | angkasabiruretail | abdestination | lms | tms
+  API_PREFIX    /api/portalhc/v1 (AB) | /api (ABR, LMS, TMS) | /api/v1 (ABD)
+  MOCK_USERNAME, MOCK_PASSWORD (AB) / MOCK_API_KEY (ABR, LMS, TMS) / MOCK_API_TOKEN (ABD): kredensial yang diterima;
   bila kosong, kredensial apa pun yang tidak kosong diterima.
 """
 import os
@@ -44,7 +47,7 @@ PETA_AB = {
     "getCompetencyAssessment": "competency_assessment",
 }
 
-# path endpoint Angkasa Biru Destination (NATA RINJANI) -> nama dataset
+# path endpoint Angkasa Biru Destination (HRIS ABD) -> nama dataset
 PETA_ABD = {
     "organization/company-types": "company_types", "organization/companies": "companies",
     "organization/company-addresses": "company_addresses", "organization/company-documents": "company_documents",
@@ -70,6 +73,9 @@ PETA_ABD = {
 
 # path endpoint LMS (sistem grup, katalog BRD 4.4) -> nama dataset
 PETA_LMS = {"assessments": "learning_agility_assessments"}
+
+# path endpoint TMS (sistem talenta grup, katalog BRD 5.1) -> nama dataset
+PETA_TMS = {"aspirations": "career_aspirations"}
 
 app = FastAPI(title=f"Mock API {SUMBER}")
 DATA: dict = {}
@@ -101,7 +107,7 @@ def login(body: dict):
 
 def _cek_auth(request: Request):
     if SUMBER == "abdestination":
-        # token bearer statis (gaya NATA RINJANI), tanpa endpoint login
+        # token bearer statis (gaya HRIS ABD), tanpa endpoint login
         harap = os.environ.get("MOCK_API_TOKEN", "")
         auth = request.headers.get("authorization", "")
         if not auth.startswith("Bearer ") or (harap and auth[7:] != harap) or auth[7:] == "":
@@ -126,7 +132,8 @@ def ambil(jalur: str, request: Request):
         return salah
     nama = PETA_AB.get(jalur) if SUMBER == "angkasabiru" else \
         PETA_ABD.get(jalur) if SUMBER == "abdestination" else \
-        PETA_LMS.get(jalur) if SUMBER == "lms" else jalur
+        PETA_LMS.get(jalur) if SUMBER == "lms" else \
+        PETA_TMS.get(jalur) if SUMBER == "tms" else jalur
     if nama is None or nama not in DATA:
         return JSONResponse({"message": "Not Found"}, status_code=404)
     baris = DATA[nama]

@@ -1,5 +1,5 @@
 # =============================================================================
-# Definisi sumber: PT Angkasa Biru Indonesia / Angkasa Biru Airports (API SAPATH)
+# Definisi sumber: PT Angkasa Biru Indonesia / Angkasa Biru Airports (API HRIS AB)
 # Autentikasi: POST /login (username+password dari .env) -> bearer token (TTL 1 jam;
 # konektor otomatis login ulang saat 401). Semua endpoint berpaginasi page/limit.
 # Catatan: endpoint ber-parameter nik (getEmployeePerformance dll.) ternyata

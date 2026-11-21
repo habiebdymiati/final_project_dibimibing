@@ -4,11 +4,7 @@ gender,perempuan,P
 gender,male,L
 gender,female,P
 employment_status,aktif,aktif
-employment_type,kp,PKWTT
-employment_type,pgn,PKWTT
-employment_type,dtg,PKWTT
-employment_type,dpb,PKWTT
-employment_type,aktif,PKWTT
+employment_type,pkwtt,PKWTT
 employment_type,pkwt,PKWT
 relationship_type,anak,Anak
 relationship_type,anak tiri,Anak Tiri
@@ -59,4 +55,3 @@ directorate_name,strategi & pengembangan teknologi,Direktorat Strategi & Pengemb
 directorate_name,keuangan dan manajemen risiko,Direktorat Keuangan dan Manajemen Risiko
 directorate_name,wakil direktur utama,Wakil Direktur Utama
 employment_status,diperbantukan,tidak aktif
-employment_type,tmb,Talent Mobility
